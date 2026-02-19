@@ -5,9 +5,12 @@
  * Operating system entry point
  */
 
+#include <spede/stdlib.h>
 #include "vga.h"
 #include "keyboard.h"
 #include "bit.h"
+#include "kernel.h"
+
 
 void main(void) {
     // Initialize the VGA driver
@@ -16,6 +19,26 @@ void main(void) {
     // Initialize the keyboard driver
     keyboard_init();
 
+    /*  // ==== TEMP: test kernel logging (host/GDB console) ====
+    kernel_set_log_level(KERNEL_LOG_LEVEL_TRACE);
+
+    kernel_log_error("log test: error %d", 1);
+    kernel_log_warn("log test: warn %d", 2);
+    kernel_log_info("log test: info %d", 3);
+    kernel_log_debug("log test: debug %d", 4);
+    kernel_log_trace("log test: trace %d", 5);
+
+    kernel_set_log_level(KERNEL_LOG_LEVEL_WARN);
+    kernel_log_info("SHOULD NOT PRINT (info)");
+    kernel_log_debug("SHOULD NOT PRINT (debug)");
+    kernel_log_warn("SHOULD PRINT (warn)");
+    kernel_log_error("SHOULD PRINT (error)");
+
+    // Stop  so it doesn't hit keyboard_getc()/infinite loop while testing logs
+    exit(0);
+    // ==== END TEMP ====
+    */
+   
     vga_printf("Welcome to %s!\n", OS_NAME);
 
     // Exercise the bit_* functions

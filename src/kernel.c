@@ -37,7 +37,20 @@ void kernel_init(void) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_error(char *msg, ...) {
-    // Implement me
+    // Return if our log level is less than error
+    if (kernel_log_level < KERNEL_LOG_LEVEL_ERROR) {
+        return;
+    }
+
+    va_list args;
+
+    printf("error: ");
+
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+
+    printf("\n");
 }
 
 /**
@@ -47,7 +60,20 @@ void kernel_log_error(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_warn(char *msg, ...) {
-    // Implement me
+      // Return if our log level is less than warn
+    if (kernel_log_level < KERNEL_LOG_LEVEL_WARN) {
+        return;
+    }
+
+    va_list args;
+
+    printf("warn: ");
+
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+
+    printf("\n");
 }
 
 /**
@@ -83,7 +109,21 @@ void kernel_log_info(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_debug(char *msg, ...) {
-    // Implement me
+        // Return if our log level is less than debug
+    if (kernel_log_level < KERNEL_LOG_LEVEL_DEBUG) {
+        return;
+    }
+
+    va_list args;
+
+    printf("debug: ");
+
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+
+    printf("\n");
+
 }
 
 /**
@@ -93,7 +133,20 @@ void kernel_log_debug(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_trace(char *msg, ...) {
-    // Implement me
+        // Return if our log level is less than trace
+    if (kernel_log_level < KERNEL_LOG_LEVEL_TRACE) {
+        return;
+    }
+
+    va_list args;
+
+    printf("trace: ");
+
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+
+    printf("\n");
 }
 
 /**
