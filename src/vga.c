@@ -6,6 +6,8 @@
 #include "kernel.h"
 #include "vga.h"
 
+
+
 /**
  * Forward Declarations
  */
@@ -14,6 +16,11 @@ void vga_cursor_update(void);
 /**
  * Global variables in this file scope
  */
+static int vga_row = 0;
+static int vga_col = 0;
+static int vga_bg  = VGA_COLOR_BLACK;
+static int vga_fg  = VGA_COLOR_LIGHT_GREY;
+static bool vga_cursor_is_enabled = false;
 
 /**
  * Initializes the VGA driver and configuration
@@ -22,16 +29,37 @@ void vga_cursor_update(void);
  */
 void vga_init(void) {
     kernel_log_info("Initializing VGA driver");
+    
+    vga_row = 0;
+    vga_col = 0;
+    vga_bg  = VGA_COLOR_BLACK;
+    vga_fg  = VGA_COLOR_LIGHT_GREY;
+    vga_cursor_is_enabled = false;   // or true if you want cursor by default
 
-    // Clear the screen
+    vga_clear();// Clear the screen
+
+    // Optional: enable cursor now
+    // vga_cursor_enable();
 }
 
 /**
  * Clears the VGA output and sets the background and foreground colors
  */
 void vga_clear(void) {
-    // Clear all character data, set the foreground and background colors
     // Set the cursor position to the top-left corner (0, 0)
+    // Clear entire screen using current bg/fg
+    unsigned short *vga_buf = VGA_BASE;
+    unsigned short cell = VGA_CHAR(vga_bg, vga_fg, ' ');
+
+    for (int r = 0; r < VGA_HEIGHT; r++) {
+        for (int c = 0; c < VGA_WIDTH; c++) {
+            vga_buf[r * VGA_WIDTH + c] = cell;
+        }
+    }
+
+    vga_row = 0;
+    vga_col = 0;
+    vga_cursor_update();
 }
 
 /**
@@ -41,7 +69,18 @@ void vga_clear(void) {
  * @param bg background color value
  */
 void vga_clear_bg(int bg) {
-    // Iterate through all VGA memory and set only the background color bits
+    // Update state + rewrite background bits for all cells
+    if (bg < 0) bg = 0;
+    if (bg > 0xF) bg = 0xF;
+    vga_bg = bg;
+
+    unsigned short *vga_buf = VGA_BASE;
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        unsigned char ch = (unsigned char)(vga_buf[i] & 0x00FF);
+        unsigned char attr = (unsigned char)((vga_buf[i] & 0xFF00) >> 8);
+        unsigned char old_fg = attr & 0x0F;
+        vga_buf[i] = VGA_CHAR(vga_bg, old_fg, ch);
+    }
 }
 
 /**
@@ -52,6 +91,17 @@ void vga_clear_bg(int bg) {
  */
 void vga_clear_fg(int fg) {
     // Iterate through all VGA memory and set only the foreground color bits.
+    if (fg < 0) fg = 0;
+    if (fg > 0xF) fg = 0xF;
+    vga_fg = fg;
+
+    unsigned short *vga_buf = VGA_BASE;
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        unsigned char ch = (unsigned char)(vga_buf[i] & 0x00FF);
+        unsigned char attr = (unsigned char)((vga_buf[i] & 0xFF00) >> 8);
+        unsigned char old_bg = (attr >> 4) & 0x0F;
+        vga_buf[i] = VGA_CHAR(old_bg, vga_fg, ch);
+    }
 }
 
 /**
@@ -165,6 +215,14 @@ void vga_cursor_update(void) {
  */
 void vga_set_rowcol(int row, int col) {
     // Update the text mode cursor (if enabled)
+    if (row < 0) row = 0;
+    if (row >= VGA_HEIGHT) row = VGA_HEIGHT - 1;
+    if (col < 0) col = 0;
+    if (col >= VGA_WIDTH) col = VGA_WIDTH - 1;
+
+    vga_row = row;
+    vga_col = col;
+    vga_cursor_update();
 }
 
 /**
@@ -172,7 +230,7 @@ void vga_set_rowcol(int row, int col) {
  * @return integer value of the row (between 0 and VGA_HEIGHT-1)
  */
 int vga_get_row(void) {
-    return 0;
+    return vga_row;
 }
 
 /**
@@ -180,7 +238,7 @@ int vga_get_row(void) {
  * @return integer value of the column (between 0 and VGA_WIDTH-1)
  */
 int vga_get_col(void) {
-    return 0;
+    return vga_col;
 }
 
 /**
@@ -192,6 +250,9 @@ int vga_get_col(void) {
  * @param bg - background color
  */
 void vga_set_bg(int bg) {
+    if (bg < 0) bg = 0;
+    if (bg > 0xF) bg = 0xF;
+    vga_bg = bg;
 }
 
 /**
@@ -199,7 +260,7 @@ void vga_set_bg(int bg) {
  * @return background color value
  */
 int vga_get_bg(void) {
-    return 0;
+    return vga_bg;
 }
 
 /**
@@ -211,6 +272,9 @@ int vga_get_bg(void) {
  * @param color - background color
  */
 void vga_set_fg(int fg) {
+    if (fg < 0) fg = 0;
+    if (fg > 0xF) fg = 0xF;
+    vga_fg = fg;
 }
 
 /**
@@ -218,7 +282,7 @@ void vga_set_fg(int fg) {
  * @return foreground color value
  */
 int vga_get_fg(void) {
-    return 0;
+    return vga_fg;
 }
 
 /**
@@ -228,7 +292,8 @@ int vga_get_fg(void) {
  */
 void vga_setc(unsigned char c) {
     unsigned short *vga_buf = VGA_BASE;
-    vga_buf[0] = VGA_CHAR(VGA_COLOR_BLACK, VGA_COLOR_LIGHT_GREY, c);
+    int idx = vga_row * VGA_WIDTH + vga_col;
+    vga_buf[idx] = VGA_CHAR(vga_bg, vga_fg, c);
 }
 
 /**
@@ -283,6 +348,16 @@ void vga_puts(char *s) {
  * @param c character to print
  */
 void vga_putc_at(int row, int col, int bg, int fg, unsigned char c) {
+    if (row < 0 || row >= VGA_HEIGHT) return;
+    if (col < 0 || col >= VGA_WIDTH) return;
+
+    if (bg < 0) bg = 0;
+    if (bg > 0xF) bg = 0xF;
+    if (fg < 0) fg = 0;
+    if (fg > 0xF) fg = 0xF;
+
+    unsigned short *vga_buf = VGA_BASE;
+    vga_buf[row * VGA_WIDTH + col] = VGA_CHAR(bg, fg, c);
 }
 
 /**
@@ -299,5 +374,13 @@ void vga_putc_at(int row, int col, int bg, int fg, unsigned char c) {
  * @param s string to print
  */
 void vga_puts_at(int row, int col, int bg, int fg, char *s) {
+    if (!s) return;
+    if (row < 0 || row >= VGA_HEIGHT) return;
+    if (col < 0) col = 0;
+    if (col >= VGA_WIDTH) return;
+
+    for (int i = 0; s[i] != '\0' && (col + i) < VGA_WIDTH; i++) {
+        vga_putc_at(row, col + i, bg, fg, (unsigned char)s[i]);
+    }
 }
 

@@ -213,13 +213,12 @@ void kernel_command(char c) {
     switch (c) {
         case 'p':
         case 'P':
-            // Test the kernel panic
             kernel_panic("test panic");
             break;
 
         case 'b':
         case 'B':
-            // Test a breakpoint (only valid when running with GDB)
+            // Test a breakpoint
             kernel_break();
             break;
 
@@ -240,7 +239,6 @@ void kernel_command(char c) {
         case KEY_NULL:
         default:
             kernel_escape = 0;
-            // Nothing to do
             break;
     }
 }
@@ -255,7 +253,6 @@ void kernel_exit(void) {
 
     // Print to the VGA display
 
-    // Exit
     exit(0);
 }
 
