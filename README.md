@@ -1,8 +1,6 @@
-# This is a start code for CSC/CPE 159 operating system pragmatics.
+# SwiftOS
 
-# Please update your teammate information, it will be easier for lecturer to grade and put assignment score to Canvas. 
-
-Team member:
+Team members:
 Youssef Boujebha, 
-Student B
-Student C
+Serjeoh Nakata,
+Jahmeen Thomas
