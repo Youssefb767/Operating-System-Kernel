@@ -222,10 +222,34 @@ void kernel_command(char c) {
             kernel_break();
             break;
 
-        // Add new commands to:
-        //  - Clear the screen (k)
-        //  - Increase the kernel log level (+)
+        //  Clear the screen (ctrl-k)
+        case 0x0B:
+            vga_clear();
+            kernel_log_info("<<vga cleared>>");
+            break;
+
+        // Toggle VGA cursor (ctrl-v)
+        case 0x16:
+            if (vga_cursor_enabled()) {
+                vga_cursor_disable();
+                kernel_log_info("<<vga cursor disabled>>");
+            } else {
+                vga_cursor_enable();
+                kernel_log_info("<<vga cursor enabled>>");
+            }
+            break;
+        
+        //  Increase the kernel log level (+)
+        case '+':
+        case '=':
+            kernel_set_log_level(kernel_get_log_level() + 1);
+            break;
+
         //  - Decrease the kernel log level (-)
+        case '-':
+        case '_':
+            kernel_set_log_level(kernel_get_log_level() - 1);
+            break;
 
         case KEY_ESCAPE:
             // Exit the OS if we press escape three times in a row
