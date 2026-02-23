@@ -108,6 +108,7 @@ void vga_clear_fg(int fg) {
  * Enables the VGA text mode cursor
  */
 void vga_cursor_enable(void) {
+    unsigned char cur;
     // All operations will consist of writing to the address port which
     // register should be set, followed by writing to the data port the value
     // to set for the specified register
@@ -133,21 +134,32 @@ void vga_cursor_enable(void) {
     // want to save
 
     // Set the cursor starting scanline (register 0x0A, cursor start register)
-
-    // Set the cursor ending scanline (register 0x0B, cursor end register)
     // Ensure that bit 5 is not set so the cursor will be enabled
+    outportb(VGA_PORT_ADDR, 0x0A);
+    cur = inportb(VGA_PORT_DATA);
+    cur = (cur & 0xC0) | 0x02;
+    outportb(VGA_PORT_DATA, cur);
+
+    // Set the cursor ending scanline (register 0x0B, cursor end register)    
+    outportb(VGA_PORT_ADDR, 0x0B);
+    cur = inportb(VGA_PORT_DATA);
+    cur = (cur & 0xE0) | 0x0C;
+    outportb(VGA_PORT_DATA, cur);
 
     // Since we may need to update the vga text mode cursor position in
     // the future, ensure that we track (via software) if the cursor is
     // enabled or disabled
+    vga_cursor_is_enabled = true;
 
     // Update the cursor location once it is enabled
+    vga_cursor_update();
 }
 
 /**
  * Disables the VGA text mode cursor
  */
 void vga_cursor_disable(void) {
+    unsigned char cur;
     // All operations will consist of writing to the address port which
     // register should be set, followed by writing to the data port the value
     // to set for the specified register
@@ -163,17 +175,22 @@ void vga_cursor_disable(void) {
 
     // Since we are disabling the cursor, we can simply set the bit of interest
     // as we won't care what the current cursor scanline start/stop values are
+    outportb(VGA_PORT_ADDR, 0x0A);
+    cur = inportb(VGA_PORT_DATA);
+    cur = (cur | 0x20);
+    outportb(VGA_PORT_DATA, cur);
 
     // Since we may need to update the vga text mode cursor position in
     // the future, ensure that we track (via software) if the cursor is
     // enabled or disabled
+    vga_cursor_is_enabled = false;
 }
 
 /**
  * Indicates if the VGA text mode cursor is enabled or disabled
  */
 bool vga_cursor_enabled(void) {
-    return false;
+    return vga_cursor_is_enabled;
 }
 
 /**
@@ -194,15 +211,21 @@ void vga_cursor_update(void) {
     // The Cursor Location High Register is the least significant byte
     // The Cursor Location Low Register is the most significant byte
 
+    if(!vga_cursor_is_enabled) return;
+
     // If the cursor is enabled:
-        // Calculate the cursor position as an offset into
-        // memory (unsigned short value)
+    // Calculate the cursor position as an offset into
+    // memory (unsigned short value)
+    unsigned short pos = (unsigned short)(vga_row * VGA_WIDTH + vga_col);
 
-        // Set the VGA Cursor Location High Register (0x0F)
-        //   Should be the least significant byte (0x??<00>)
-
-        // Set the VGA Cursor Location Low Register (0x0E)
-        //   Should be the most significant byte (0x<00>??)
+    // Set the VGA Cursor Location High Register (0x0F)
+    //   Should be the least significant byte (0x??<00>)
+    outportb(VGA_PORT_ADDR, 0x0F);
+    outportb(VGA_PORT_DATA, (unsigned char)(pos & 0xFF));
+    // Set the VGA Cursor Location Low Register (0x0E)
+    //   Should be the most significant byte (0x<00>??)
+    outportb(VGA_PORT_ADDR, 0x0E);
+    outportb(VGA_PORT_DATA, (unsigned char)((pos >> 8) & 0xFF));
 }
 
 /**
