@@ -75,11 +75,15 @@ void main(void) {
 
     // Keyboard echo loop
     while (1) {
-        char c = keyboard_poll();
+        unsigned int c = keyboard_poll();
         char buf[80] = {0};
 
-        if (c) {
-            vga_putc(c);
+        if (c != KEY_NULL) {
+            if (c < 0x20 || c == KEY_ESCAPE) {
+                kernel_command((char)c);
+            } else {
+                vga_putc((unsigned char)c);
+            }
 
             snprintf(buf, sizeof(buf),
                      "%02d, %02d",

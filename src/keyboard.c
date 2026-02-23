@@ -155,6 +155,12 @@ unsigned int keyboard_decode(unsigned int scan_code) {
     if (c) {
         if (shift ^ caps) 
             c = (unsigned char)(c - 'a' + 'A');
+
+        // Holding Ctrl
+        if (ctrl) {
+            if (c >= 'a' && c <= 'z') return (unsigned int)(c - 'a' + 1);
+            if (c >= 'A' && c <= 'Z') return (unsigned int)(c - 'A' + 1);
+        }
         return c;
     }
 
@@ -224,6 +230,6 @@ unsigned int keyboard_decode(unsigned int scan_code) {
         case '.':  return '>';
         case '/':  return '?';
     }
-
+    
     return c;
 }
