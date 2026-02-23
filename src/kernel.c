@@ -159,6 +159,23 @@ void kernel_log_trace(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_panic(char *msg, ...) {
+
+    va_list args;
+
+    // Log to debug console
+    printf("panic: ");
+    va_start(args, msg);
+    vprintf(msg, args);
+    va_end(args);
+    printf("\n");
+
+    // Log to VGA display
+    va_start(args, msg);
+    vga_printf("panic: ");
+    vga_printf(msg);
+    va_end(args);
+    vga_printf("\n");
+
     // Trigger a breakpoint to inspect what caused the panic
     kernel_break();
 
