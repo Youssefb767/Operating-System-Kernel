@@ -12,8 +12,6 @@
 /* keyboard state */
 static bool kb_shift = false;
 static bool kb_caps  = false;
-// static bool kb_ctrl  = false;
-// static bool kb_alt   = false;
 
 /**
  * Initializes keyboard data structures and variables
