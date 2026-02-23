@@ -314,16 +314,54 @@ void vga_setc(unsigned char c) {
  * @param c - character to print
  */
 void vga_putc(unsigned char c) {
-    unsigned short *vga_buf = VGA_BASE;
-    vga_buf[0] = VGA_CHAR(VGA_COLOR_BLACK, VGA_COLOR_LIGHT_GREY, c);
-
     // Handle scecial characters
+    if (c == '\n') {
+        // New line
+        vga_col = 0;
+        vga_row++;
+    } else if (c == '\r') {
+        // Carriage return
+        vga_col = 0;
+    } else if (c == '\t') {
+        // Tab: 4 spaces
+        for (int i = 0; i < 4; i++) {
+            vga_putc(' ');
+        }
+        return;
+    } else if (c == '\b') {
+        // Backspace
+        if (vga_col > 0) {
+            vga_col--;
+        } else {
+            if (vga_row > 0) {
+                vga_row--;
+                vga_col = VGA_WIDTH - 1;
+            } else {
+            // Cursor is already top left
+            return;
+            }
+        }
+        // Erase character at new position
+        vga_setc(' ');
+    } else {
+        vga_setc(c);
+        vga_col++;
+    }
 
     // Handle end of lines
+    if (vga_col >= VGA_WIDTH) {
+        vga_col = 0;
+        vga_row++;
+    }
 
     // Wrap-around to the top/left corner
+    if (vga_row >= VGA_HEIGHT) {
+        vga_row = 0;
+        vga_col = 0;
+    }
 
     // Update the text mode cursor, if enabled
+    if (vga_cursor_is_enabled) vga_cursor_update();
 }
 
 /**
@@ -332,6 +370,11 @@ void vga_putc(unsigned char c) {
  * @param s - string to print
  */
 void vga_puts(char *s) {
+    if (s == NULL) return;
+
+    for (int i = 0; s[i] != '\0'; i++) {
+        vga_putc((unsigned char)s[i]);
+    }
 }
 
 /**
