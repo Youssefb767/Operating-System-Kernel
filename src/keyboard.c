@@ -11,8 +11,14 @@
 /**
  * Initializes keyboard data structures and variables
  */
+static bool shift, ctrl, alt, caps, num;
 void keyboard_init() {
     kernel_log_info("Initializing keyboard driver");
+    shift = false;
+    ctrl = false;
+    alt = false;
+    caps = false;
+    num = false;
 }
 
 /**
@@ -20,8 +26,7 @@ void keyboard_init() {
  * @return raw character data from the keyboard
  */
 unsigned int keyboard_scan(void) {
-    unsigned int c = KEY_NULL;
-    return c;
+    return inportb(KBD_PORT_DATA);
 }
 
 /**
@@ -34,8 +39,9 @@ unsigned int keyboard_scan(void) {
  *         that cannot be decoded
  */
 unsigned int keyboard_poll(void) {
-    unsigned int c = KEY_NULL;
-    return c;
+    if(inportb(KBD_PORT_STAT) & 0x01)
+        return keyboard_decode(keyboard_scan());
+    return KEY_NULL;
 }
 
 /**
@@ -62,5 +68,25 @@ unsigned int keyboard_getc(void) {
  *
  */
 unsigned int keyboard_decode(unsigned int c) {
-    return c;
+    bool press = (c & 0x80) != 0;
+    unsigned int key = (c & 0x7F);
+
+    // Modifier Keys
+    switch(key)
+    case 0x2a:
+    case 0x36:
+        shift = press;
+        return KEY_NULL;
+    case 0x1d:
+        ctrl = press;
+        return KEY_NULL;
+    case 0x38:
+        alt = press;
+        return KEY_NULL;
+    case 0x3a:
+        caps = press;
+        return KEY_NULL;
+    case 0x45:
+        num = press;
+        return KEY_NULL;
 }
