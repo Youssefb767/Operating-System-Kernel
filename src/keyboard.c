@@ -9,15 +9,17 @@
 #include "keyboard.h"
 #include <stdbool.h>
 
-/* keyboard state */
-static bool kb_shift = false;
-static bool kb_caps  = false;
-
 /**
  * Initializes keyboard data structures and variables
  */
+static bool shift, ctrl, alt, caps, num;
 void keyboard_init() {
     kernel_log_info("Initializing keyboard driver");
+    shift = false;
+    ctrl = false;
+    alt = false;
+    caps = false;
+    num = false;
 }
 
 /**
@@ -25,8 +27,7 @@ void keyboard_init() {
  * @return raw character data from the keyboard
  */
 unsigned int keyboard_scan(void) {
-    unsigned int c = KEY_NULL;
-    return c;
+    return inportb(KBD_PORT_DATA);
 }
 
 /**
@@ -39,8 +40,9 @@ unsigned int keyboard_scan(void) {
  *         that cannot be decoded
  */
 unsigned int keyboard_poll(void) {
-    unsigned int c = KEY_NULL;
-    return c;
+    if(inportb(KBD_PORT_STAT) & 0x01)
+        return keyboard_decode(keyboard_scan());
+    return KEY_NULL;
 }
 
 /**
@@ -68,9 +70,45 @@ unsigned int keyboard_getc(void) {
  */
 unsigned int keyboard_decode(unsigned int scan_code) {
     if (scan_code == KEY_NULL) return KEY_NULL;
-    if (scan_code & 0x80) return KEY_NULL; // only decode on release
+
+    bool pressed = (scan_code & 0x80) != 0;
     unsigned int key_code = scan_code & 0x7F;
 
+    // Modifier keys
+    switch (key_code) {
+        // SHIFT (L/R)
+        case 0x2A:
+        case 0x36:
+            shift = pressed;
+            return KEY_NULL;
+        
+        // CTRL
+        case 0x1D:
+            ctrl = pressed;
+            return KEY_NULL;
+
+        // ALT
+        case 0x38:
+            alt = pressed;
+            return KEY_NULL;
+
+        // CAPS LOCK (toggle):
+        case 0x3A:
+            if (!pressed) caps = !caps;
+            return KEY_NULL;
+
+        // NUM LOCK (toggle):
+        case 0x45:
+            if (!pressed) num = !num;
+            return KEY_NULL;
+
+        default:
+            break;
+    }
+
+    // Only decode keys on release
+    if (pressed) return KEY_NULL;
+    
     // Special keys
     switch (key_code) {
         case 0x01: return KEY_ESCAPE; // Escape
@@ -115,7 +153,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
     }
 
     if (c) {
-        if (kb_shift ^ kb_caps) 
+        if (shift ^ caps) 
             c = (unsigned char)(c - 'a' + 'A');
         return c;
     }
@@ -137,7 +175,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
     }
 
     if (c) {
-        if (!kb_shift) return c;
+        if (!shift) return c;
 
         switch(c) {
             case '1': return '!';
@@ -171,7 +209,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
         default: return KEY_NULL;
     }
 
-    if (!kb_shift) return c;
+    if (!shift) return c;
 
     switch (c) {
         case '-':  return '_';
