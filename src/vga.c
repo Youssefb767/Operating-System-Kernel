@@ -39,7 +39,7 @@ void vga_init(void) {
     vga_clear();// Clear the screen
 
     // Optional: enable cursor now
-    // vga_cursor_enable();
+    vga_cursor_enable();
 }
 
 /**
@@ -137,13 +137,13 @@ void vga_cursor_enable(void) {
     // Ensure that bit 5 is not set so the cursor will be enabled
     outportb(VGA_PORT_ADDR, 0x0A);
     cur = inportb(VGA_PORT_DATA);
-    cur = (cur & 0xC0) | 0x02;
+    cur = (cur & 0xC0) | 0x00;
     outportb(VGA_PORT_DATA, cur);
 
-    // Set the cursor ending scanline (register 0x0B, cursor end register)    
+    // Set the cursor ending scanline (register 0x0B, cursor end register)
     outportb(VGA_PORT_ADDR, 0x0B);
     cur = inportb(VGA_PORT_DATA);
-    cur = (cur & 0xE0) | 0x0C;
+    cur = (cur & 0xE0) | 0x0F;
     outportb(VGA_PORT_DATA, cur);
 
     // Since we may need to update the vga text mode cursor position in
