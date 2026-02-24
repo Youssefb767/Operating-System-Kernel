@@ -71,7 +71,7 @@ unsigned int keyboard_getc(void) {
 unsigned int keyboard_decode(unsigned int scan_code) {
     if (scan_code == KEY_NULL) return KEY_NULL;
 
-    bool pressed = (scan_code & 0x80) != 0;
+    bool pressed = (scan_code & 0x80) == 0;
     unsigned int key_code = scan_code & 0x7F;
 
     // Modifier keys
@@ -81,7 +81,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
         case 0x36:
             shift = pressed;
             return KEY_NULL;
-        
+
         // CTRL
         case 0x1D:
             ctrl = pressed;
@@ -108,7 +108,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
 
     // Only decode keys on release
     if (pressed) return KEY_NULL;
-    
+
     // Special keys
     switch (key_code) {
         case 0x01: return KEY_ESCAPE; // Escape
@@ -153,7 +153,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
     }
 
     if (c) {
-        if (shift ^ caps) 
+        if (shift ^ caps)
             c = (unsigned char)(c - 'a' + 'A');
 
         // Holding Ctrl
