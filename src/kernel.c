@@ -305,4 +305,3 @@ void kernel_exit(void) {
     vga_printf("\nExiting %s...\n", OS_NAME);
     exit(0);
 }
-

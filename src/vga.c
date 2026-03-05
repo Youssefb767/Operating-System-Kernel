@@ -449,4 +449,3 @@ void vga_puts_at(int row, int col, int bg, int fg, char *s) {
         vga_putc_at(row, col + i, bg, fg, (unsigned char)s[i]);
     }
 }
-
