@@ -148,7 +148,7 @@ int vga_get_bg(void) {
 /**
  * Sets the foreground/text color.
  *
- * Does not modify any existing foreground colors, only sets it for
+ * Does not modify any existing background colors, only sets it for
  * new operations.
  *
  * @param color - background color
@@ -172,7 +172,7 @@ int vga_get_fg(void) {
  *
  * @param c - Character to print
  */
-void vga_setc(char c) {
+void vga_setc(unsigned char c) {
     unsigned short *vga_buf = VGA_BASE;
     vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] = VGA_CHAR(vga_color_bg, vga_color_fg, c);
 }
@@ -193,7 +193,7 @@ void vga_setc(char c) {
  *
  * @param c - character to print
  */
-void vga_putc(char c) {
+void vga_putc(unsigned char c) {
     unsigned short *vga_buf = VGA_BASE;
 
     // Handle scecial characters
@@ -285,7 +285,7 @@ void vga_puts(char *s) {
  * @param fg - foreground color
  * @param c - character to print
  */
-void vga_putc_at(int x, int y, int bg, int fg, char c) {
+void vga_putc_at(int x, int y, int bg, int fg, unsigned char c) {
     int cur_x = vga_pos_x;
     int cur_y = vga_pos_y;
     int cur_bg = vga_color_bg;
@@ -410,4 +410,3 @@ void vga_cursor_disable(void) {
     outportb(VGA_PORT_ADDR, 0x0A);
     outportb(VGA_PORT_DATA, 0x20);
 }
-

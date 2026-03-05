@@ -199,10 +199,35 @@ void pic_irq_disable(int irq) {
  * @return - 1 if enabled, 0 if disabled
  */
 int pic_irq_enabled(int irq) {
-    // Determine the PIC to be used and adjust the irq number
-    // Read the current mask from the data port
-    // check the associated bit and return if the IRQ is enabled
-    return 0;
+    unsigned char mask;
+    int bit;
+
+    /* Accept either remapped IDT interrupts (0x20-0x2F) or PIC IRQ (0-15) */
+    if (irq >= 0x20 && irq <= 0x2F) {
+        irq -= 0x20;
+    }
+
+    if (irq < 0 || irq > 0x0F) {
+        kernel_log_warn("pic: invalid irq %d", irq);
+        return 0;
+    }
+
+    if (irq >= 8) {
+        /* Secondary PIC */
+        bit = irq - 8;
+        mask = inportb(PIC2_DATA);
+    } else {
+        /* Primary PIC */
+        bit = irq;
+        mask = inportb(PIC1_DATA);
+    }
+
+    /* In PIC mask: 0 = enabled, 1 = masked/disabled */
+    if ((mask & (1 << bit)) == 0) {
+        return 1; /* enabled */
+    } else {
+        return 0; /* disabled */
+    }
 }
 
 /**
@@ -213,8 +238,26 @@ int pic_irq_enabled(int irq) {
  * @param irq - IRQ to be dismissed
  */
 void pic_irq_dismiss(int irq) {
-    // Send EOI to the secondary PIC, if needed
-    // Send EOI to the primary PIC, if needed
+    // Accept either remapped IDT interrupts (0x20-0x2F) or PIC IRQ (0-15)
+    if (irq >= 0x20 && irq <= 0x2F) {
+        irq -= 0x20;
+    }
+
+    if (irq < 0 || irq > 0x0F) {
+        kernel_log_warn("pic: invalid irq to dismiss: %d", irq);
+        return;
+    }
+
+    // If from secondary PIC (8-15) we must send EOI to both PIC2 then PIC1
+    if (irq >= 8) {
+        outportb(PIC2_CMD, PIC_EOI);
+        outportb(PIC1_CMD, PIC_EOI);
+    } else {
+        // Primary PIC only
+        outportb(PIC1_CMD, PIC_EOI);
+    }
+
+    kernel_log_debug("pic: dismissed irq %d", irq);
 }
 
 /**
