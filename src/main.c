@@ -79,7 +79,7 @@ void main(void) {
         char buf[80] = {0};
 
         if (c != KEY_NULL) {
-            if (c < 0x20 || c == KEY_ESCAPE) {
+            if (c == KEY_ESCAPE || c == 0x02 || c == 0x0B || c == 0x10 || c == 0x16) {
                 kernel_command((char)c);
             } else {
                 vga_putc((unsigned char)c);

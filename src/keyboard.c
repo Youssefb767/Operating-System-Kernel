@@ -8,6 +8,7 @@
 #include "kernel.h"
 #include "keyboard.h"
 #include <stdbool.h>
+#include <spede/stdio.h>
 
 /**
  * Initializes keyboard data structures and variables
@@ -71,43 +72,48 @@ unsigned int keyboard_getc(void) {
 unsigned int keyboard_decode(unsigned int scan_code) {
     if (scan_code == KEY_NULL) return KEY_NULL;
 
-    bool pressed = (scan_code & 0x80) == 0;
+    bool released = (scan_code & 0x80) != 0;
     unsigned int key_code = scan_code & 0x7F;
+
+    printf("[kbd] sc=%02X released=%d shift=%d ctrl=%d caps=%d num=%d\n",
+       scan_code,
+       (scan_code & 0x80) != 0,
+       shift, ctrl, caps, num);
 
     // Modifier keys
     switch (key_code) {
         // SHIFT (L/R)
         case 0x2A:
         case 0x36:
-            shift = pressed;
+            shift = !released;
             return KEY_NULL;
 
         // CTRL
         case 0x1D:
-            ctrl = pressed;
+            ctrl = !released;
             return KEY_NULL;
 
         // ALT
         case 0x38:
-            alt = pressed;
+            alt = !released;
             return KEY_NULL;
 
         // CAPS LOCK (toggle):
         case 0x3A:
-            if (!pressed) caps = !caps;
+            if (!released) caps = !caps;
             return KEY_NULL;
 
         // NUM LOCK (toggle):
         case 0x45:
-            if (!pressed) num = !num;
+            if (!released) num = !num;
             return KEY_NULL;
 
         default:
             break;
     }
 
-    // Only decode keys on release
-    if (pressed) return KEY_NULL;
+    // Only decode keys on press
+    if (released) return KEY_NULL;
 
     // Special keys
     switch (key_code) {
@@ -161,6 +167,7 @@ unsigned int keyboard_decode(unsigned int scan_code) {
             if (c >= 'a' && c <= 'z') return (unsigned int)(c - 'a' + 1);
             if (c >= 'A' && c <= 'Z') return (unsigned int)(c - 'A' + 1);
         }
+        printf("[kbd] decoded=%02X\n", (unsigned int)c);
         return c;
     }
 
@@ -195,7 +202,31 @@ unsigned int keyboard_decode(unsigned int scan_code) {
             case '9': return '(';
             case '0': return ')';
         }
+        printf("[kbd] decoded=%02X\n", (unsigned int)c);
         return c;
+    }
+
+    // Numpad keys
+    switch (key_code) {
+        case 0x4E: return '+';   // KP +
+        case 0x4A: return '-';   // KP -
+        case 0x37: return '*';   // KP *
+        case 0x35: return '/';   // KP /
+        case 0x1C: return '\n';  // KP Enter
+
+        case 0x52: return num ? '0' : KEY_NULL;  // KP 0
+        case 0x4F: return num ? '1' : KEY_NULL;  // KP 1
+        case 0x50: return num ? '2' : KEY_NULL;  // KP 2
+        case 0x51: return num ? '3' : KEY_NULL;  // KP 3
+        case 0x4B: return num ? '4' : KEY_NULL;  // KP 4
+        case 0x4C: return num ? '5' : KEY_NULL;  // KP 5
+        case 0x4D: return num ? '6' : KEY_NULL;  // KP 6
+        case 0x47: return num ? '7' : KEY_NULL;  // KP 7
+        case 0x48: return num ? '8' : KEY_NULL;  // KP 8
+        case 0x49: return num ? '9' : KEY_NULL;  // KP 9
+        case 0x53: return num ? '.' : KEY_NULL;  // KP .
+
+        default: break;
     }
 
     // Basic punctuation
@@ -231,5 +262,6 @@ unsigned int keyboard_decode(unsigned int scan_code) {
         case '/':  return '?';
     }
     
+    printf("[kbd] decoded=%02X\n", (unsigned int)c);
     return c;
 }

@@ -227,7 +227,7 @@ void kernel_break(void) {
 void kernel_command(char c) {
     static int kernel_escape = 0;
 
-    switch (c) {
+    switch ((unsigned char)c) {
         case 'p':
         case 'P':
             kernel_panic("test panic");
@@ -237,6 +237,16 @@ void kernel_command(char c) {
         case 'B':
             // Test a breakpoint
             kernel_break();
+            break;
+
+        // Breakpoint (ctrl-b)
+        case 0x02:
+            kernel_break();
+            break;
+
+        // Panic (ctrl-p)
+        case 0x10:
+            kernel_panic("test panic");
             break;
 
         //  Clear the screen (ctrl-k)
@@ -291,9 +301,8 @@ void kernel_command(char c) {
 void kernel_exit(void) {
     // Print to the terminal
     printf("Exiting %s...\n", OS_NAME);
-
-    // Print to the VGA display
-
+    // Print to the VGA
+    vga_printf("\nExiting %s...\n", OS_NAME);
     exit(0);
 }
 
