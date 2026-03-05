@@ -119,10 +119,40 @@ void interrupts_irq_register(int irq, void (*entry)(), void (*handler)()) {
  * @note IRQs > 0xf will be remapped
  */
 void pic_irq_enable(int irq) {
-    // Determine the PIC to be used for the given IRQ number
-    // Read the current mask
-    // Clear the associated bit in the mask to enable the IRQ
-    // Write the mask out to the PIC
+    unsigned char mask;
+
+    // Accept either PIC IRQ (0-15) or remapped IDT interrupt (0x20-0x2F)
+    if (irq >= 0x20 && irq <= 0x2F) {
+        irq -= 0x20; // convert to 0-15
+    }
+
+    if (irq < 0 || irq > 0x0F) {
+        kernel_log_warn("pic: invalid irq %d", irq);
+        return;
+    }
+
+    // Secondary PIC: IRQ 8-15
+    if (irq >= 8) {
+        int sec_irq = irq - 8;
+
+        // Enable cascade line (IRQ2) on primary PIC so secondary can signal through
+        mask = inportb(PIC1_DATA);
+        mask &= ~(1 << 2);
+        outportb(PIC1_DATA, mask);
+
+        // Enable the specific IRQ on secondary PIC
+        mask = inportb(PIC2_DATA);
+        mask &= ~(1 << sec_irq);
+        outportb(PIC2_DATA, mask);
+
+    } else {
+        // Primary PIC: IRQ 0-7
+        mask = inportb(PIC1_DATA);
+        mask &= ~(1 << irq);
+        outportb(PIC1_DATA, mask);
+    }
+
+    kernel_log_debug("pic: enabled irq %d", irq);
 }
 
 /**
@@ -131,10 +161,35 @@ void pic_irq_enable(int irq) {
  * @param irq - IRQ that should be disabled
  */
 void pic_irq_disable(int irq) {
-    // Determine the PIC to be used for the given IRQ number
-    // Read the current mask
-    // Set the associated bit in the mask to disable the IRQ
-    // Write the mask back to the PIC
+    unsigned char mask;
+
+    // Accept either PIC IRQ (0-15) or remapped IDT interrupt (0x20-0x2F)
+    if (irq >= 0x20 && irq <= 0x2F) {
+        irq -= 0x20; // convert to 0-15
+    }
+
+    if (irq < 0 || irq > 0x0F) {
+        kernel_log_warn("pic: invalid irq %d", irq);
+        return;
+    }
+
+    // Secondary PIC: IRQ 8-15
+    if (irq >= 8) {
+        int sec_irq = irq - 8;
+
+        // Disable the specific IRQ on the secondary PIC
+        mask = inportb(PIC2_DATA);
+        mask |= (1 << sec_irq);
+        outportb(PIC2_DATA, mask);
+
+    } else {
+        // Primary PIC: IRQ 0-7
+        mask = inportb(PIC1_DATA);
+        mask |= (1 << irq);
+        outportb(PIC1_DATA, mask);
+    }
+
+    kernel_log_debug("pic: disabled irq %d", irq);
 }
 
 /**

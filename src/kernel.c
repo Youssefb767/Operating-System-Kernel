@@ -4,17 +4,16 @@
  *
  * Kernel functions
  */
-#include <spede/flames.h>   // for breakpoint()
-#include <spede/stdarg.h>   // for variable argument functions (va_*)
-#include <spede/stdio.h>    // for printf
-#include <spede/string.h>   // string handling
+#include <spede/flames.h>
+#include <spede/stdarg.h>
+#include <spede/stdio.h>
+#include <spede/string.h>
 
 #include "kernel.h"
 #include "vga.h"
-#include "keyboard.h"
 
 #ifndef KERNEL_LOG_LEVEL_DEFAULT
-#define KERNEL_LOG_LEVEL_DEFAULT KERNEL_LOG_LEVEL_TRACE
+#define KERNEL_LOG_LEVEL_DEFAULT KERNEL_LOG_LEVEL_DEBUG
 #endif
 
 // Current log level
@@ -60,7 +59,7 @@ void kernel_log_error(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_warn(char *msg, ...) {
-      // Return if our log level is less than warn
+    // Return if our log level is less than warn
     if (kernel_log_level < KERNEL_LOG_LEVEL_WARN) {
         return;
     }
@@ -109,7 +108,7 @@ void kernel_log_info(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_debug(char *msg, ...) {
-        // Return if our log level is less than debug
+    // Return if our log level is less than debug
     if (kernel_log_level < KERNEL_LOG_LEVEL_DEBUG) {
         return;
     }
@@ -123,7 +122,6 @@ void kernel_log_debug(char *msg, ...) {
     va_end(args);
 
     printf("\n");
-
 }
 
 /**
@@ -133,7 +131,7 @@ void kernel_log_debug(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_log_trace(char *msg, ...) {
-        // Return if our log level is less than trace
+    // Return if our log level is less than trace
     if (kernel_log_level < KERNEL_LOG_LEVEL_TRACE) {
         return;
     }
@@ -159,27 +157,17 @@ void kernel_log_trace(char *msg, ...) {
  * @param ... - variable arguments to pass in to the string format
  */
 void kernel_panic(char *msg, ...) {
-
     va_list args;
 
-    // Log to debug console
     printf("panic: ");
+
     va_start(args, msg);
     vprintf(msg, args);
     va_end(args);
+
     printf("\n");
 
-    // Log to VGA display
-    va_start(args, msg);
-    vga_printf("panic: ");
-    vga_printf(msg);
-    va_end(args);
-    vga_printf("\n");
-
-    // Trigger a breakpoint to inspect what caused the panic
-    kernel_break();
-
-    // Exit since this is fatal
+    breakpoint();
     exit(1);
 }
 
@@ -196,9 +184,7 @@ int kernel_get_log_level(void) {
  * @param level - the log level to set
  * @return the kernel log level
  */
-int kernel_set_log_level(log_level_t level) {
-    int prev_log_level = kernel_log_level;
-
+int kernel_set_log_level(int level) {
     if (level < KERNEL_LOG_LEVEL_NONE) {
         kernel_log_level = KERNEL_LOG_LEVEL_NONE;
     } else if (level > KERNEL_LOG_LEVEL_ALL) {
@@ -207,93 +193,10 @@ int kernel_set_log_level(log_level_t level) {
         kernel_log_level = level;
     }
 
-    if (prev_log_level != kernel_log_level) {
-        printf("<<kernel log level set to %d>>", kernel_log_level);
-    }
+    kernel_log_info("kernel log level set to %d", kernel_log_level);
 
     return kernel_log_level;
 }
-
-/**
- * Triggers a breakpoint (if running under GBD)
- */
-void kernel_break(void) {
-    breakpoint();
-}
-
-/**
- * Triggers a kernel command
- */
-void kernel_command(char c) {
-    static int kernel_escape = 0;
-
-    switch ((unsigned char)c) {
-        case 'p':
-        case 'P':
-            kernel_panic("test panic");
-            break;
-
-        case 'b':
-        case 'B':
-            // Test a breakpoint
-            kernel_break();
-            break;
-
-        // Breakpoint (ctrl-b)
-        case 0x02:
-            kernel_break();
-            break;
-
-        // Panic (ctrl-p)
-        case 0x10:
-            kernel_panic("test panic");
-            break;
-
-        //  Clear the screen (ctrl-k)
-        case 0x0B:
-            vga_clear();
-            kernel_log_info("<<vga cleared>>");
-            break;
-
-        // Toggle VGA cursor (ctrl-v)
-        case 0x16:
-            if (vga_cursor_enabled()) {
-                vga_cursor_disable();
-                kernel_log_info("<<vga cursor disabled>>");
-            } else {
-                vga_cursor_enable();
-                kernel_log_info("<<vga cursor enabled>>");
-            }
-            break;
-        
-        //  Increase the kernel log level (+)
-        case '+':
-        case '=':
-            kernel_set_log_level(kernel_get_log_level() + 1);
-            break;
-
-        //  - Decrease the kernel log level (-)
-        case '-':
-        case '_':
-            kernel_set_log_level(kernel_get_log_level() - 1);
-            break;
-
-        case KEY_ESCAPE:
-            // Exit the OS if we press escape three times in a row
-            kernel_escape++;
-
-            if (kernel_escape >= 3) {
-                kernel_exit();
-            }
-            break;
-
-        case KEY_NULL:
-        default:
-            kernel_escape = 0;
-            break;
-    }
-}
-
 
 /**
  * Exits the kernel
@@ -301,7 +204,15 @@ void kernel_command(char c) {
 void kernel_exit(void) {
     // Print to the terminal
     printf("Exiting %s...\n", OS_NAME);
-    // Print to the VGA
-    vga_printf("\nExiting %s...\n", OS_NAME);
+
+    // Print to the VGA display
+    vga_set_bg(VGA_COLOR_RED);
+    vga_set_fg(VGA_COLOR_WHITE);
+    vga_set_xy(0, 0);
+    vga_printf("%*s", 80, "");
+    vga_set_xy(0, 0);
+    vga_printf("Exiting %s...\n", OS_NAME);
+
+    // Exit
     exit(0);
 }
