@@ -12,7 +12,7 @@
 #endif
 
 #ifndef TTY_SCROLLBACK
-#define TTY_SCROLLBACK  0   // Number of lines in the scrollback buffer
+#define TTY_SCROLLBACK  24   // Number of lines in the scrollback buffer
 #endif
 
 #define TTY_WIDTH       80  // Width of the TTY
