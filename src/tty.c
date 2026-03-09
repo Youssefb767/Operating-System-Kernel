@@ -48,17 +48,17 @@ void tty_refresh(void) {
     // Reset the tty's refresh flag so we don't refresh unnecessarily
     if(active_tty->refresh == 1) {
         for(unsigned int y = 0; y < TTY_HEIGHT; y++) {
-            for(unsigned int x = 0; x < TTY_HEIGHT; x++) {
+            for(unsigned int x = 0; x < TTY_WIDTH; x++) {
                 unsigned int i = (active_tty->pos_scroll + y) * TTY_WIDTH + x;
                 char c = ' ';
                 if (i < TTY_BUF_SIZE) {
-                    c = active_tty->buf[idx];
+                    c = active_tty->buf[i];
                     if (c == 0) c = ' ';
                 }
-            vga_putc_at(x, y, active_tty->color_bg, active_tty->color_fg, ch);
+            vga_putc_at(x, y, active_tty->color_bg, active_tty->color_fg, c);
+            }
         }
         active_tty->refresh = 0;
-        }
     }
 }
 
@@ -119,24 +119,26 @@ void tty_update(char c) {
         active_tty->pos_y++;
     }
 
-    // Potentially necessary scroll flag
-//    if (vga_scroll) {
-        // Handle end of rows
-        if (active_tty->pos_y >= TTY_HEIGHT) {
-            // Scroll the screen up (copy each row to the previous)
-            for (unsigned int i = 0; i < TTY_WIDTH * (TTY_HEIGHT - 1); i++) {
-                active_tty->buf[i] = active_tty->buf[TTY_WIDTH + i];
-            }
-
-            // Clear the last line
-            for (unsigned int i = 0; i < TTY_WIDTH; i++) {
-                active_tty->buf[i + (TTY_WIDTH * (TTY_HEIGHT-1))] = ' ';
-            }
-
-            active_tty->pos_y = TTY_HEIGHT - 1;
+    // Handle end of buffer (screen + scrollback)
+    if (active_tty->pos_y >= (TTY_HEIGHT + TTY_SCROLLBACK)) {
+        // Scroll the whole buffer up by one line
+        for (unsigned int i = 0; i < TTY_WIDTH * ((TTY_HEIGHT + TTY_SCROLLBACK) - 1); i++) {
+            active_tty->buf[i] = active_tty->buf[TTY_WIDTH + i];
         }
 
-//    }
+        // Clear the last line in the buffer
+        for (unsigned int i = 0; i < TTY_WIDTH; i++) {
+            active_tty->buf[i + (TTY_WIDTH * ((TTY_HEIGHT + TTY_SCROLLBACK) - 1))] = ' ';
+        }
+
+        // Keep cursor on the last visible screen row
+        active_tty->pos_y = TTY_HEIGHT - 1;
+    }
+
+    // Keep scroll position within valid range
+    if (active_tty->pos_scroll > TTY_SCROLLBACK) {
+        active_tty->pos_scroll = TTY_SCROLLBACK;
+    }
 
     active_tty->refresh = 1;
 }
@@ -166,7 +168,7 @@ void tty_init(void) {
     tty_select(0);
 
     // Register a timer callback to update the screen on a regular interval
-    timer_callback_register(tty_update, 1, -1);
+    timer_callback_register(tty_refresh, 1, -1);
 }
 
 
