@@ -436,6 +436,26 @@ unsigned int keyboard_decode(unsigned int c) {
                 }
             }
 
+            if (c == KEY_HOME) {
+                tty_scroll_top();
+                return KEY_NULL;
+            }
+
+            if (c == KEY_END) {
+                tty_scroll_bottom();
+                return KEY_NULL;
+            }
+
+            if (c == KEY_PAGE_UP) {
+                tty_scroll_up();
+                return KEY_NULL;
+            }
+
+            if (c == KEY_PAGE_DOWN) {
+                tty_scroll_down();
+                return KEY_NULL;
+            }
+
             if (c) {
                 // For now, print to the host console
                 if (c >= 0x20 && c <= 0x7f) {
