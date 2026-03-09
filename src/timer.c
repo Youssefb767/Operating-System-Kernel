@@ -19,6 +19,7 @@ typedef struct timer_t {
     void (*callback)(); // Function to call when the interval occurs
     int interval;       // Interval in which the timer will be called
     int repeat;         // Indicate how many intervals to repeat (-1 should repeat forever)
+    int next_call;      // Exact tick when the timer should be called next
 } timer_t;
 
 /**
@@ -51,6 +52,11 @@ int timer_callback_register(void (*func_ptr)(), int interval, int repeat) {
         return -1;
     }
 
+    if (interval <= 0) {
+        kernel_log_error("timer: invalid interval %d", interval);
+        return -1;
+    }
+
     // Obtain a timer id
     if (queue_out(&timer_allocator, &timer_id) != 0) {
         kernel_log_error("timer: unable to allocate a timer");
@@ -58,8 +64,14 @@ int timer_callback_register(void (*func_ptr)(), int interval, int repeat) {
     }
 
     // Set the callback function for the timer
+    timers[timer_id].callback = func_ptr;
     // Set the interval value for the timer
+    timers[timer_id].interval = interval;
     // Set the repeat value for the timer
+    timers[timer_id].repeat = repeat;
+
+    // Set the next tick value
+    timers[timer_id].next_call = timer_ticks + interval;
 
     return timer_id;
 }
@@ -112,12 +124,38 @@ void timer_irq_handler(void) {
     timer_ticks++;
 
     // Iterate through the timers table
+    for (int i = 0; i < TIMERS_MAX; i++) {
         // If we have a valid callback, check if it needs to be called
-            // If the timer interval is hit, run the callback function
+        if (!timers[i].callback) continue;
+        
+        // If the timer interval is hit, run the callback function
+        if (timer_ticks >= timers[i].next_call) {
+            timers[i].callback();
+
+            // Schedule next call
+            timers[i].next_call += timers[i].interval;
+            
+            // Single-shot timer unregisters after firing once
+            if (timers[i].repeat == 0) {
+                timer_callback_unregister(i);
+            }
 
             // If the timer repeat is greater than 0, decrement
-            // If the timer repeat is equal to 0, unregister the timer
+            else if (timers[i].repeat > 0) {
+                timers[i].repeat--;
+            
+                // If the timer repeat is equal to 0, unregister the timer
+                if (timers[i].repeat == 0) {
+                    timer_callback_unregister(i);
+                }
+            }
+
             // If the timer repeat is less than 0, do nothing
+            else {
+                // do nothing
+            }
+        }            
+    }
 }
 
 /**
@@ -127,13 +165,22 @@ void timer_init(void) {
     kernel_log_info("Initializing timer");
 
     // Set the starting tick value
+    timer_ticks = 0;
 
     // Initialize the timers data structures
+    memset(timers, 0, sizeof(timers));
 
     // Initialize the timer callback allocator queue
+    queue_init(&timer_allocator);
 
     // Populate items into the allocator queue
+    for (int i = 0; i < TIMERS_MAX; i++) {
+        if (queue_in(&timer_allocator, i) != 0) {
+            kernel_log_error("timer: failed to init allocator slot %d", i);
+        }
+    }
 
     // Register the Timer IRQ with the isr_entry_timer and timer_irq_handler
+    interrupts_irq_register(IRQ_TIMER, isr_entry_timer, timer_irq_handler);
 }
 
