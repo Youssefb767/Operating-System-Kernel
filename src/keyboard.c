@@ -1,10 +1,12 @@
+#include <spede/flames.h>
 #include <spede/stdio.h>
 #include <spede/machine/io.h>
 
+#include "interrupts.h"
 #include "kernel.h"
 #include "keyboard.h"
+#include "kproc.h"
 #include "tty.h"
-#include "interrupts.h"
 
 // Keyboard data port
 #define KBD_PORT_DATA           0x60
@@ -55,9 +57,6 @@
 //   CAPS, NUMLOCK
 static unsigned int kbd_status = 0x0;
 static unsigned int esc_status = 0;
-
-// NEW: track E0 prefix for extended keys (separate Home/End/PgUp/PgDn, arrows, etc.)
-static unsigned int e0_prefix = 0;
 
 // Primary keymap
 static const unsigned char keyboard_map_primary[] = {
@@ -304,31 +303,7 @@ unsigned int keyboard_getc(void) {
  * Processes raw keyboard input and decodes it.
  */
 unsigned int keyboard_decode(unsigned int c) {
-    // Handle 0xE0-prefixed extended scancodes (separate navigation cluster)
-    if (c == 0xE0) {
-        e0_prefix = 1;
-        return KEY_NULL;
-    }
-
-    if (e0_prefix) {
-        e0_prefix = 0;
-
-        // Ignore releases; only act on key presses
-        if (!KEY_PRESSED(c)) {
-            return KEY_NULL;
-        }
-
-        switch (c & ~0x80) {
-            case 0x47: tty_scroll_top();    return KEY_NULL; // Home
-            case 0x4F: tty_scroll_bottom(); return KEY_NULL; // End
-            case 0x49: tty_scroll_up();     return KEY_NULL; // Page Up
-            case 0x51: tty_scroll_down();   return KEY_NULL; // Page Down
-            default: return KEY_NULL;
-        }
-    }
-
     unsigned int key_pressed = KEY_PRESSED(c);
-
 
     switch (c & ~0x80) {
         case KEY_CTRL_L:
@@ -453,27 +428,21 @@ unsigned int keyboard_decode(unsigned int c) {
                     kernel_set_log_level(kernel_get_log_level() - 1);
                     return KEY_NULL;
                 }
-            }
 
-            // Your scrolling handlers (keep these as you had them)
-            if (c == KEY_HOME) {
-                tty_scroll_top();
-                return KEY_NULL;
-            }
+                if (c == 'n' || c == 'N') {
+                    kproc_create(kproc_test, "test", PROC_TYPE_USER);
+                    return KEY_NULL;
+                }
 
-            if (c == KEY_END) {
-                tty_scroll_bottom();
-                return KEY_NULL;
-            }
+                if (c == 'q' || c == 'Q') {
+                    kproc_destroy(active_proc);
+                    return KEY_NULL;
+                }
 
-            if (c == KEY_PAGE_UP) {
-                tty_scroll_up();
-                return KEY_NULL;
-            }
-
-            if (c == KEY_PAGE_DOWN) {
-                tty_scroll_down();
-                return KEY_NULL;
+                if (c == 'b' || c == 'B') {
+                    breakpoint();
+                    return KEY_NULL;
+                }
             }
 
             if (c) {

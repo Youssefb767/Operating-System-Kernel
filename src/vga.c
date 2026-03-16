@@ -148,7 +148,7 @@ int vga_get_bg(void) {
 /**
  * Sets the foreground/text color.
  *
- * Does not modify any existing background colors, only sets it for
+ * Does not modify any existing foreground colors, only sets it for
  * new operations.
  *
  * @param color - background color
@@ -410,3 +410,4 @@ void vga_cursor_disable(void) {
     outportb(VGA_PORT_ADDR, 0x0A);
     outportb(VGA_PORT_DATA, 0x20);
 }
+
