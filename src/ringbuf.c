@@ -17,6 +17,16 @@
  * @return -1 on error; 0 on success
  */
 int ringbuf_init(ringbuf_t *buf) {
+    if (!buf) return -1;
+
+    buf->head = 0;
+    buf->tail = 0;
+    buf->size = 0;
+
+    for (int i = 0; i< RINGBUF_SIZE; i++) {
+        buf->data[i] = 0;
+    }
+    
     return 0;
 }
 
@@ -27,6 +37,12 @@ int ringbuf_init(ringbuf_t *buf) {
  * @return -1 on error; 0 on success
  */
 int ringbuf_write(ringbuf_t *buf, char byte) {
+    if (!buf) return -1;
+    if (ringbuf_is_full(buf)) return -1;
+
+    buf->data[buf->tail] = byte;
+    buf->tail = (buf->tail + 1) % RINGBUF_SIZE;
+    buf->size++;
     return 0;
 }
 
@@ -37,6 +53,13 @@ int ringbuf_write(ringbuf_t *buf, char byte) {
  * @return -1 on error; 0 on success
  */
 int ringbuf_read(ringbuf_t *buf, char *byte) {
+    if (!buf || !byte) return -1;
+    if (ringbuf_is_empty(buf)) return -1;
+    
+    *byte = buf->data[buf->head];
+    buf->head = (buf->head + 1) % RINGBUF_SIZE;
+    buf->size--;
+    
     return 0;
 }
 
@@ -50,6 +73,15 @@ int ringbuf_read(ringbuf_t *buf, char *byte) {
  *       cannot be copied - i.e. the buffer would overflow
  */
 int ringbuf_write_mem(ringbuf_t *buf, char *mem, size_t size) {
+    if (!buf || !mem) return -1;
+
+    // fail if there is overflow
+    if (size > (size_t)(RINGBUF_SIZE - buf->size)) return -1;
+
+    for (size_t i = 0; i < size; i++) {
+        if (ringbuf_write(buf, mem[i]) < 0) return -1;
+    }
+    
     return 0;
 }
 
@@ -62,7 +94,22 @@ int ringbuf_write_mem(ringbuf_t *buf, char *mem, size_t size) {
  *         copied
  */
 int ringbuf_read_mem(ringbuf_t *buf, char *mem, size_t size) {
-    return 0;
+    if (!buf || !mem) return -1;
+    if (size == 0) return 0;
+    if (ringbuf_is_empty(buf)) return -1;
+
+    size_t to_copy = size;
+    if (to_copy > (size_t)buf->size) {
+        to_copy = (size_t)buf->size;
+    }
+
+    for (size_t i = 0; i < to_copy; i++) {
+        mem[i] = buf->data[buf->head];
+        buf->head = (buf->head + 1) % RINGBUF_SIZE;
+        buf->size--;
+    }
+    
+    return (int)to_copy;
 }
 
 /**
@@ -71,6 +118,16 @@ int ringbuf_read_mem(ringbuf_t *buf, char *mem, size_t size) {
  * @return -1 on error, 0 on success
  */
 int ringbuf_flush(ringbuf_t *buf) {
+    if (!buf) return -1;
+
+    buf->head = 0;
+    buf->tail = 0;
+    buf->size = 0;
+
+    for (int i = 0; i < RINGBUF_SIZE; i++) {
+        buf->data[i] = 0;
+    }
+    
     return 0;
 }
 
@@ -80,7 +137,8 @@ int ringbuf_flush(ringbuf_t *buf) {
  * @return true if empty, false if not empty
  */
 bool ringbuf_is_empty(ringbuf_t *buf) {
-    return false;
+    if (!buf) return false;
+    return buf->size == 0;
 }
 
 /**
@@ -89,6 +147,7 @@ bool ringbuf_is_empty(ringbuf_t *buf) {
  * @return true if full, false if not full
  */
 bool ringbuf_is_full(ringbuf_t *buf) {
-    return false;
+    if (!buf) return false;
+    return buf->size >= RINGBUF_SIZE;
 }
 
