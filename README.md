@@ -3,6 +3,6 @@
 # Please update your teammate information, it will be easier for lecturer to grade and put assignment score to Canvas. 
 
 Team member:
-Youssef Boujebha,
-Serjeoh Nakata,
-Jahmeen Thomas
+Student A
+Student B
+Student C
