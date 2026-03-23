@@ -56,10 +56,23 @@ proc_t *pid_to_proc(int pid) {
  * @return the index into the process table, -1 on error
  */
 int proc_to_entry(proc_t *proc) {
-    // For a given process entry pointer, return the entry/index into the process table
-    //  i.e. if proc -> proc_table[3], return 3
-    // Ensure that the process control block actually refers to a valid process
-    return -1;
+    int entry;
+
+    if (proc == NULL) {
+        return -1;
+    }
+
+    if (proc < &proc_table[0] || proc >= &proc_table[PROC_MAX]) {
+        return -1;
+    }
+
+    entry = (int)(proc - &proc_table[0]);
+
+    if (proc_table[entry].state == NONE) {
+        return -1;
+    }
+
+    return entry;
 }
 
 /**
