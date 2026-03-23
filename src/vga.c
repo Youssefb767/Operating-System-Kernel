@@ -16,7 +16,6 @@
 // VGA Data Port -> The data to be written into the register
 #define VGA_PORT_DATA 0x3D5
 
-
 // Current x position (column)
 int vga_pos_x = 0;
 
@@ -64,9 +63,9 @@ void vga_cursor_update(void) {
         unsigned short pos = vga_pos_x + vga_pos_y * VGA_WIDTH;
 
         outportb(VGA_PORT_ADDR, 0x0F);
-        outportb(VGA_PORT_DATA, (unsigned char) (pos & 0xFF));
+        outportb(VGA_PORT_DATA, (unsigned char)(pos & 0xFF));
         outportb(VGA_PORT_ADDR, 0x0E);
-        outportb(VGA_PORT_DATA, (unsigned char) ((pos >> 8) & 0xFF));
+        outportb(VGA_PORT_DATA, (unsigned char)((pos >> 8) & 0xFF));
     }
 }
 
@@ -103,7 +102,7 @@ void vga_set_xy(int x, int y) {
     if (y < 0) {
         vga_pos_y = 0;
     } else if (y >= VGA_HEIGHT) {
-        vga_pos_y = VGA_HEIGHT- 1;
+        vga_pos_y = VGA_HEIGHT - 1;
     } else {
         vga_pos_y = y;
     }
@@ -172,9 +171,10 @@ int vga_get_fg(void) {
  *
  * @param c - Character to print
  */
-void vga_setc(unsigned char c) {
+void vga_setc(char c) {
     unsigned short *vga_buf = VGA_BASE;
-    vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] = VGA_CHAR(vga_color_bg, vga_color_fg, c);
+    vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] =
+        VGA_CHAR(vga_color_bg, vga_color_fg, c);
 }
 
 /**
@@ -193,20 +193,21 @@ void vga_setc(unsigned char c) {
  *
  * @param c - character to print
  */
-void vga_putc(unsigned char c) {
+void vga_putc(char c) {
     unsigned short *vga_buf = VGA_BASE;
 
-    // Handle scecial characters
+    // Handle special characters
     switch (c) {
         case '\b':
             if (vga_pos_x != 0) {
                 vga_pos_x--;
             } else if (vga_pos_y != 0) {
                 vga_pos_y--;
-                vga_pos_x = VGA_WIDTH-1;
+                vga_pos_x = VGA_WIDTH - 1;
             }
 
-            vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] = VGA_CHAR(vga_color_bg, vga_color_fg, 0x00);
+            vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] =
+                VGA_CHAR(vga_color_bg, vga_color_fg, 0x00);
             break;
 
         case '\t':
@@ -223,7 +224,8 @@ void vga_putc(unsigned char c) {
             break;
 
         default:
-            vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] = VGA_CHAR(vga_color_bg, vga_color_fg, c);
+            vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] =
+                VGA_CHAR(vga_color_bg, vga_color_fg, c);
             vga_pos_x++;
             break;
     }
@@ -244,12 +246,12 @@ void vga_putc(unsigned char c) {
 
             // Clear the last line
             for (unsigned int i = 0; i < VGA_WIDTH; i++) {
-                vga_buf[i + (VGA_WIDTH * (VGA_HEIGHT-1))] = VGA_CHAR(vga_color_bg, vga_color_fg, ' ');
+                vga_buf[i + (VGA_WIDTH * (VGA_HEIGHT - 1))] =
+                    VGA_CHAR(vga_color_bg, vga_color_fg, ' ');
             }
 
             vga_pos_y = VGA_HEIGHT - 1;
         }
-
     }
 
     vga_cursor_update();
@@ -285,7 +287,7 @@ void vga_puts(char *s) {
  * @param fg - foreground color
  * @param c - character to print
  */
-void vga_putc_at(int x, int y, int bg, int fg, unsigned char c) {
+void vga_putc_at(int x, int y, int bg, int fg, char c) {
     int cur_x = vga_pos_x;
     int cur_y = vga_pos_y;
     int cur_bg = vga_color_bg;
@@ -296,22 +298,18 @@ void vga_putc_at(int x, int y, int bg, int fg, unsigned char c) {
         x = 0;
     } else if (x >= VGA_WIDTH) {
         x = VGA_WIDTH - 1;
-    } else {
-        x = x;
     }
 
     if (y < 0) {
         y = 0;
     } else if (y >= VGA_HEIGHT) {
         y = VGA_HEIGHT - 1;
-    } else {
-        y = y;
     }
 
     vga_pos_x = x;
     vga_pos_y = y;
-    vga_color_bg = bg & 0x7;
-    vga_color_fg = fg & 0xf;
+    vga_color_bg = bg & 0xF;
+    vga_color_fg = fg & 0xF;
     vga_cursor = 0;
 
     vga_putc(c);
@@ -340,28 +338,24 @@ void vga_puts_at(int x, int y, int bg, int fg, char *s) {
     int cur_y = vga_pos_y;
     int cur_bg = vga_color_bg;
     int cur_fg = vga_color_fg;
-    int cur_cursor = 0;
+    int cur_cursor = vga_cursor;
 
     if (x < 0) {
         x = 0;
     } else if (x >= VGA_WIDTH) {
         x = VGA_WIDTH - 1;
-    } else {
-        x = x;
     }
 
     if (y < 0) {
         y = 0;
     } else if (y >= VGA_HEIGHT) {
-        y = VGA_HEIGHT- 1;
-    } else {
-        y = y;
+        y = VGA_HEIGHT - 1;
     }
 
     vga_pos_x = x;
     vga_pos_y = y;
-    vga_color_bg = bg & 0x7;
-    vga_color_fg = fg & 0xf;
+    vga_color_bg = bg & 0xF;
+    vga_color_fg = fg & 0xF;
     vga_cursor = 0;
 
     while (*s != '\0') {
@@ -410,4 +404,3 @@ void vga_cursor_disable(void) {
     outportb(VGA_PORT_ADDR, 0x0A);
     outportb(VGA_PORT_DATA, 0x20);
 }
-
