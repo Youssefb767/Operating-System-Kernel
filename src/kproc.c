@@ -72,22 +72,40 @@ proc_t * entry_to_proc(int entry) {
 int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
     proc_t *proc = NULL;
 
-
     // Allocate an entry in the process table via the process allocator
+    int entry;
+    if (!proc_ptr || !proc_name || queue_out(&proc_allocator, &entry) != 0){
+        return -1; 
+    }
+    proc = &proc_table[entry];
 
-    // Initialize the process control block
+    // Initialize the process control block    
+    memset(proc, 0, sizeof(proc_t));
+    memset(proc_stack[entry], 0, PROC_STACK_SIZE);
 
     // Initialize the process stack via proc_stack
     // proc->stack = ...
+    proc->stack = proc_stack[entry]; 
 
     // Initialize the trapframe pointer at the bottom of the stack
     // proc->trapframe = (trapframe_t *)(&proc->stack[PROC_STACK_SIZE - sizeof(trapframe_t)]);
+    proc->trapframe = (trapframe_t *)(&proc->stack[PROC_STACK_SIZE - sizeof(trapframe_t)]);
 
     // Set each of the process control block structure members to the initial starting values
     // as each new process is created, increment next_pid
     // proc->pid, state, type, run_time, cpu_time, start_time, etc.
+    proc->pid = next_pid;
+    next_pid++;
+
+    proc->state = IDLE;
+    proc->type = proc_type;
+    proc->run_time = 0;
+    proc->cpu_time = 0;
+    proc->start_time = timer_get_ticks();
 
     // Copy the passed-in name to the name buffer in the process control block
+    strncpy(proc->name, proc_name, PROC_NAME_LEN - 1);
+    proc->name[PROC_NAME_LEN - 1] = '\0';
 
     // Set the instruction pointer in the trapframe
     proc->trapframe->eip = (unsigned int)proc_ptr;
@@ -103,10 +121,11 @@ int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
     proc->trapframe->gs = get_gs();
 
     // Add the process to the scheduler
+    scheduler_add(proc);
 
-    kernel_log_info("Created process %s (%d) entry=%d", proc->name, proc->pid, -1);
+    kernel_log_info("Created process %s (%d) entry=%d", proc->name, proc->pid, entry);
 
-    return -1;
+    return proc->pid;
 }
 
 /**
@@ -116,13 +135,28 @@ int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
  * @return 0 on success, -1 on error
  */
 int kproc_destroy(proc_t *proc) {
+    if(!proc || proc->pid == 0){
+        return -1;
+    }
+
+    int entry = proc_to_entry(proc);
+    if(entry < 0){
+        return -1;
+    }
+
     // Remove the process from the scheduler
+    scheduler_remove(proc);
 
     // Clear/Reset all process data (process control block, stack, etc) related to the process
+    if(active_proc == proc){
+        active_proc = NULL;
+    }
+
+    memset(proc, 0, sizeof(proc_t));
+    memset(proc_stack[entry], 0, PROC_STACK_SIZE);
 
     // Add the process entry/index value back into the process allocator
-
-    return -1;
+    return queue_in(&proc_allocator, entry);
 }
 
 /**
