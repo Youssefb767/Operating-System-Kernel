@@ -79,9 +79,15 @@ int proc_to_entry(proc_t *proc) {
  * Returns a pointer to the given process entry
  */
 proc_t *entry_to_proc(int entry) {
-    // For the given entry number, return a pointer to the process table entry
-    // Ensure that the process control block actually refers to a valid process
-    return NULL;
+    if (entry < 0 || entry >= PROC_MAX) {
+        return NULL;
+    }
+
+    if (proc_table[entry].state == NONE) {
+        return NULL;
+    }
+
+    return &proc_table[entry];
 }
 
 /**
