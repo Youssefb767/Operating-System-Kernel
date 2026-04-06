@@ -18,7 +18,7 @@
 #include "queue.h"
 
 // Process Queues
-queue_t run_queue;
+queue_t run_queue;      // Run queue -> processes that will be scheduled to run
 
 // From kproc.c
 extern proc_t *active_proc;

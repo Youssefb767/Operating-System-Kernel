@@ -1,8 +1,3 @@
-/**
- * CPE/CSC 159 - Operating System Pragmatics
- * California State University, Sacramento
- *
- */
 #include <spede/machine/io.h>
 #include <spede/stdarg.h>
 #include <spede/stdio.h>
