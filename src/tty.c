@@ -128,6 +128,7 @@ void tty_update(char c) {
                 tty->pos_y--;
                 tty->pos_x = TTY_WIDTH - 1;
             }
+            tty->buf[(tty->pos_scroll * TTY_WIDTH) + (tty->pos_x + tty->pos_y * TTY_WIDTH)] = ' ';
             break;
 
         case '\r':
