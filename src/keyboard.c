@@ -59,7 +59,7 @@ static unsigned int kbd_status = 0x0;
 static unsigned int esc_status = 0;
 
 // Primary keymap
-static const unsigned char keyboard_map_primary[] = {
+static const char keyboard_map_primary[] = {
     KEY_NULL,           /* 0x00 - Null */
     KEY_ESCAPE,         /* 0x01 - Escape  */
     '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
@@ -89,15 +89,15 @@ static const unsigned char keyboard_map_primary[] = {
     KEY_NULL,           /* 0x45 - NumLock */
     KEY_NULL,           /* 0x46 - ScrollLock */
     '7',                /* 0x47 - Numpad 7 */
-    KEY_UP,             /* 0x48 - Numpad 8 */
+    KEY_UP, //'8',                /* 0x48 - Numpad 8 */
     '9',                /* 0x49 - Numpad 9 */
     '-',                /* 0x4a - Numpad Minus */
-    KEY_LEFT,           /* 0x4b - Numpad 4 */
+    KEY_LEFT, //'4',                /* 0x4b - Numpad 4 */
     '5',                /* 0x4c - Numpad 5 */
-    KEY_RIGHT,          /* 0x4d - Numpad 6 */
+    KEY_RIGHT, //'6',                /* 0x4d - Numpad 6 */
     '+',                /* 0x4e - Numpad Plus */
     '1',                /* 0x4f - Numpad 1 */
-    KEY_DOWN,           /* 0x50 - Numpad 2 */
+    KEY_DOWN, //'2',                /* 0x50 - Numpad 2 */
     '3',                /* 0x51 - Numpad 3 */
     KEY_INSERT,         /* 0x52 - Insert */
     KEY_DELETE,         /* 0x53 - Delete */
@@ -148,7 +148,7 @@ static const unsigned char keyboard_map_primary[] = {
 };
 
 // Secondary keymap (when CAPS ^ SHIFT is enabled)
-static const unsigned char keyboard_map_secondary[] = {
+static const char keyboard_map_secondary[] = {
     KEY_NULL,           /* 0x00 - Undefined */
     KEY_ESCAPE,         /* 0x01 - Escape */
     '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',
@@ -236,13 +236,18 @@ static const unsigned char keyboard_map_secondary[] = {
     KEY_NULL            /* 0x7f */
 };
 
+
+/*
+ *
+ */
 void keyboard_irq_handler(void) {
     unsigned int c = keyboard_poll();
 
     if (c) {
-        tty_update(c);
+        tty_input(c);
     }
 }
+
 
 /**
  * Initializes keyboard data structures and variables
@@ -264,7 +269,7 @@ void keyboard_init() {
 unsigned int keyboard_scan(void) {
     unsigned int c;
     c = inportb(KBD_PORT_DATA);
-    kernel_log_trace("keyboard: raw data [0x%02x]", c);
+//    kernel_log_trace("keyboard: raw data [0x%02x]", c);
     return c;
 }
 
@@ -301,6 +306,18 @@ unsigned int keyboard_getc(void) {
 
 /**
  * Processes raw keyboard input and decodes it.
+ *
+ * Should keep track of the keyboard status for the following keys:
+ *   SHIFT, CTRL, ALT, CAPS, NUMLOCK
+ *
+ * For all other characters, they should be decoded/mapped to ASCII
+ * or ASCII-friendly characters.
+ *
+ * For any character that cannot be mapped, KEY_NULL should be returned.
+ *
+ * If *all* of the status keys defined in KEY_KERNEL_DEBUG are pressed,
+ * while another character is entered, the kernel_debug_command()
+ * function should be called.
  */
 unsigned int keyboard_decode(unsigned int c) {
     unsigned int key_pressed = KEY_PRESSED(c);
@@ -310,13 +327,13 @@ unsigned int keyboard_decode(unsigned int c) {
         case KEY_CTRL_R:
             if (key_pressed) {
                 if ((kbd_status & KEY_STATUS_CTRL) == 0) {
-                    kernel_log_trace("keyboard: CTRL pressed");
+//                    kernel_log_trace("keyboard: CTRL pressed");
                 }
 
                 kbd_status |= KEY_STATUS_CTRL;
             } else {
                 if ((kbd_status & KEY_STATUS_CTRL) != 0) {
-                    kernel_log_trace("keyboard: CTRL released");
+//                    kernel_log_trace("keyboard: CTRL released");
                 }
 
                 kbd_status &= ~KEY_STATUS_CTRL;
@@ -327,13 +344,13 @@ unsigned int keyboard_decode(unsigned int c) {
         case KEY_ALT_R:
             if (key_pressed) {
                 if ((kbd_status & KEY_STATUS_ALT) == 0) {
-                    kernel_log_trace("keyboard: ALT pressed");
+//                    kernel_log_trace("keyboard: ALT pressed");
                 }
 
                 kbd_status |= KEY_STATUS_ALT;
             } else {
                 if ((kbd_status & KEY_STATUS_ALT) != 0) {
-                    kernel_log_trace("keyboard: ALT released");
+//                    kernel_log_trace("keyboard: ALT released");
                 }
 
                 kbd_status &= ~KEY_STATUS_ALT;
@@ -344,13 +361,13 @@ unsigned int keyboard_decode(unsigned int c) {
         case KEY_SHIFT_R:
             if (key_pressed) {
                 if ((kbd_status & KEY_STATUS_SHIFT) == 0) {
-                    kernel_log_trace("keyboard: SHIFT pressed");
+//                    kernel_log_trace("keyboard: SHIFT pressed");
                 }
 
                 kbd_status |= KEY_STATUS_SHIFT;
             } else {
                 if ((kbd_status & KEY_STATUS_SHIFT) != 0) {
-                    kernel_log_trace("keyboard: SHIFT released");
+//                    kernel_log_trace("keyboard: SHIFT released");
                 }
 
                 kbd_status &= ~KEY_STATUS_SHIFT;
@@ -359,10 +376,10 @@ unsigned int keyboard_decode(unsigned int c) {
 
         case KEY_CAPS:
             if (key_pressed) {
-                kernel_log_trace("keyboard: CAPS pressed");
+//                kernel_log_trace("keyboard: CAPS pressed");
                 kbd_status ^= KEY_STATUS_CAPS;
             } else {
-                kernel_log_trace("keyboard: CAPS released");
+//                kernel_log_trace("keyboard: CAPS released");
             }
             break;
 
@@ -379,19 +396,13 @@ unsigned int keyboard_decode(unsigned int c) {
                 break;
             }
 
-            // SAFETY: don't index outside the 0..0x7f keymap
-            if (c >= 0x80) {
-                return KEY_NULL;
-            }
 
             // Choose which map to use based upon the keyboard status
             if (c >= 0x47 && c <= 0x53) {
                 if ((kbd_status & KEY_STATUS_NUMLOCK) != 0) {
-                    // NumLock ON => digits (primary)
-                    c = keyboard_map_primary[c];
-                } else {
-                    // NumLock OFF => navigation (secondary)
                     c = keyboard_map_secondary[c];
+                } else {
+                    c = keyboard_map_primary[c];
                 }
             } else if ((((kbd_status & KEY_STATUS_SHIFT) != 0)
                ^ ((kbd_status & KEY_STATUS_CAPS)  != 0)) != 0) {
@@ -448,9 +459,9 @@ unsigned int keyboard_decode(unsigned int c) {
             if (c) {
                 // For now, print to the host console
                 if (c >= 0x20 && c <= 0x7f) {
-                    kernel_log_trace("keyboard: character [0x%02x] '%c'", c, c);
+//                    kernel_log_trace("keyboard: character [0x%02x] '%c'", c, c);
                 } else {
-                    kernel_log_trace("keyboard: character [0x%02x]", c);
+//                    kernel_log_trace("keyboard: character [0x%02x]", c);
                 }
                 return c;
             }

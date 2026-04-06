@@ -9,13 +9,15 @@
 #include <spede/string.h>
 #include <spede/machine/proc_reg.h>
 
+#include "kernel.h"
 #include "trapframe.h"
 #include "kproc.h"
-#include "kernel.h"
 #include "scheduler.h"
 #include "timer.h"
 #include "queue.h"
 #include "vga.h"
+#include "prog_user.h"
+#include "syscall_common.h"
 
 // Next available process id to be assigned
 int next_pid;
@@ -32,17 +34,11 @@ unsigned char proc_stack[PROC_MAX][PROC_STACK_SIZE];
 /**
  * Looks up a process in the process table via the process id
  * @param pid - process id
- * @return pointer to the process entry, NULL or error or if not found
+ * @return pointer to the pruocess entry, NULL or error or if not found
  */
 proc_t *pid_to_proc(int pid) {
-    int i;
-
-    if (pid < 0) {
-        return NULL;
-    }
-
-    for (i = 0; i < PROC_MAX; i++) {
-        if (proc_table[i].state != NONE && proc_table[i].pid == pid) {
+    for (unsigned int i = 0; i < PROC_MAX; i++) {
+        if (proc_table[i].pid == pid) {
             return &proc_table[i];
         }
     }
@@ -56,38 +52,28 @@ proc_t *pid_to_proc(int pid) {
  * @return the index into the process table, -1 on error
  */
 int proc_to_entry(proc_t *proc) {
-    int entry;
-
     if (proc == NULL) {
         return -1;
     }
 
-    if (proc < &proc_table[0] || proc >= &proc_table[PROC_MAX]) {
-        return -1;
+    for (unsigned int i = 0; i < PROC_MAX; i++) {
+        if (proc->pid == proc_table[i].pid) {
+            return i;
+        }
     }
 
-    entry = (int)(proc - &proc_table[0]);
-
-    if (proc_table[entry].state == NONE) {
-        return -1;
-    }
-
-    return entry;
+    return -1;
 }
 
 /**
  * Returns a pointer to the given process entry
  */
-proc_t *entry_to_proc(int entry) {
-    if (entry < 0 || entry >= PROC_MAX) {
-        return NULL;
+proc_t * entry_to_proc(int entry) {
+    if (entry >= 0 && entry < PROC_MAX) {
+        return &proc_table[entry];
     }
 
-    if (proc_table[entry].state == NONE) {
-        return NULL;
-    }
-
-    return &proc_table[entry];
+    return NULL;
 }
 
 /**
@@ -98,38 +84,50 @@ proc_t *entry_to_proc(int entry) {
  * @return process id of the created process, -1 on error
  */
 int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
-    proc_t *proc = NULL;
+    int proc_entry;
+    proc_t *proc;
 
-    // Allocate an entry in the process table via the process allocator
-    int entry;
-    if (!proc_ptr || !proc_name || queue_out(&proc_allocator, &entry) != 0) {
+    // Ensure that valid parameters have been specified
+    if (proc_name == NULL) {
+        kernel_panic("Invalid process title\n");
+    }
+
+    if (proc_ptr == NULL) {
+        kernel_panic("Invalid function pointer");
+    }
+
+    // Allocate the PCB entry for the process
+    if (queue_out(&proc_allocator, &proc_entry) != 0) {
+        kernel_log_warn("Unable to allocate a process entry");
         return -1;
     }
-    proc = &proc_table[entry];
 
-    // Initialize the process control block
+    // Allocate the process table entry
+    proc = &proc_table[proc_entry];
+
+    // Initialize the PCB entry for the process
     memset(proc, 0, sizeof(proc_t));
-    memset(proc_stack[entry], 0, PROC_STACK_SIZE);
 
-    // Initialize the process stack via proc_stack
-    proc->stack = proc_stack[entry];
+    // Point the stack to the process stack
+    proc->stack = proc_stack[proc_entry];
 
-    // Initialize the trapframe pointer at the bottom of the stack
+    // Set the process state to RUNNING
+    // Initialize other process control block variables to default values
+    proc->pid         = next_pid++;
+    proc->state       = IDLE;
+    proc->type        = proc_type;
+    proc->run_time    = 0;
+    proc->cpu_time    = 0;
+    proc->start_time  = timer_get_ticks();
+
+    // Copy the process name to the PCB
+    strncpy(proc->name, proc_name, PROC_NAME_LEN);
+
+    // Ensure the stack for the process is cleared
+    memset(proc->stack, 0, PROC_STACK_SIZE);
+
+    // Allocate the trapframe data
     proc->trapframe = (trapframe_t *)(&proc->stack[PROC_STACK_SIZE - sizeof(trapframe_t)]);
-
-    // Set each of the process control block structure members to the initial starting values
-    proc->pid = next_pid;
-    next_pid++;
-
-    proc->state = IDLE;
-    proc->type = proc_type;
-    proc->run_time = 0;
-    proc->cpu_time = 0;
-    proc->start_time = timer_get_ticks();
-
-    // Copy the passed-in name to the name buffer in the process control block
-    strncpy(proc->name, proc_name, PROC_NAME_LEN - 1);
-    proc->name[PROC_NAME_LEN - 1] = '\0';
 
     // Set the instruction pointer in the trapframe
     proc->trapframe->eip = (unsigned int)proc_ptr;
@@ -144,10 +142,10 @@ int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
     proc->trapframe->fs = get_fs();
     proc->trapframe->gs = get_gs();
 
-    // Add the process to the scheduler
+    // Add the process to the run queue
     scheduler_add(proc);
 
-    kernel_log_info("Created process %s (%d) entry=%d", proc->name, proc->pid, entry);
+    kernel_log_info("Created process %s (%d) entry=%d", proc->name, proc->pid, proc_entry);
 
     return proc->pid;
 }
@@ -159,36 +157,39 @@ int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
  * @return 0 on success, -1 on error
  */
 int kproc_destroy(proc_t *proc) {
-    int entry;
-
-    if (!proc || proc->pid == 0) {
+    if (proc == NULL) {
+        kernel_panic("Invalid process!");
         return -1;
     }
 
-    entry = proc_to_entry(proc);
-    if (entry < 0) {
+    if (proc->pid == 0) {
+        kernel_log_error("Cannot exit the idle task");
         return -1;
     }
 
     // Remove the process from the scheduler
     scheduler_remove(proc);
 
-    // Clear/Reset all process data (process control block, stack, etc) related to the process
-    if (active_proc == proc) {
-        active_proc = NULL;
+    // Clean up the process table for the process
+    int entry = proc_to_entry(proc);
+    if (entry < 0) {
+        kernel_panic("Error obtaining the process table entry");
     }
 
+    kernel_log_info("Destroying process %s (%d) entry=%d", proc->name, proc->pid, entry);
+
+    // Reset the process stack
+    memset(proc->stack, 0, PROC_STACK_SIZE);
+
+    // Reset the process control block
     memset(proc, 0, sizeof(proc_t));
-    memset(proc_stack[entry], 0, PROC_STACK_SIZE);
 
-    proc->pid = -1;
-    proc->state = NONE;
-    proc->type = PROC_TYPE_NONE;
-    proc->stack = NULL;
-    proc->trapframe = NULL;
+    // Add the entry back to the process queue (to be recycled)
+    if (queue_in(&proc_allocator, entry) != 0) {
+        kernel_log_warn("Unable to queue entry back into allocator");
+    }
 
-    // Add the process entry/index value back into the process allocator
-    return queue_in(&proc_allocator, entry);
+    return 0;
 }
 
 /**
@@ -213,44 +214,61 @@ void kproc_test(void) {
 }
 
 /**
+ * Attaches a process to a TTY
+ * Points the input / output buffers to the TTY's input/output buffers
+ *   IO[0] should be input
+ *   IO[1] should be output
+ */
+int kproc_attach_tty(int pid, int tty_number) {
+    proc_t *proc = pid_to_proc(pid);
+    struct tty_t *tty = tty_get(tty_number);
+
+    if (proc && tty) {
+        kernel_log_debug("Attaching process %d to TTY id to PID %d", proc->pid, tty_number);
+        proc->io[PROC_IO_IN] = &tty->io_input;
+        proc->io[PROC_IO_OUT] = &tty->io_output;
+        return 0;
+    }
+
+    return -1;
+}
+
+/**
  * Initializes all process related data structures
  * Creates the first process (kernel_idle)
  * Registers the callback to display the process table/status
  */
 void kproc_init(void) {
-    int i;
+    int pid;
 
     kernel_log_info("Initializing process management");
 
-    // Initialize all data structures and variables
-    //   - process table
-    //   - process allocator
-    //   - process stack
-    next_pid = 0;
-
-    memset(proc_table, 0, sizeof(proc_table));
-    memset(proc_stack, 0, sizeof(proc_stack));
-
+    // Initialize the process queue
     queue_init(&proc_allocator);
 
-    for (i = 0; i < PROC_MAX; i++) {
-        proc_table[i].pid = -1;
-        proc_table[i].state = NONE;
-        proc_table[i].type = PROC_TYPE_NONE;
-        proc_table[i].name[0] = '\0';
-        proc_table[i].start_time = 0;
-        proc_table[i].run_time = 0;
-        proc_table[i].cpu_time = 0;
-        proc_table[i].stack = NULL;
-        proc_table[i].trapframe = NULL;
-
-        if (queue_in(&proc_allocator, i) != 0) {
-            kernel_log_warn("kproc: unable to queue allocator entry %d", i);
-        }
+    // Populate the process queue
+    for (int i = 0; i < PROC_MAX; i++) {
+        queue_in(&proc_allocator, i);
     }
 
-    // Create the idle process (kproc_idle) as a kernel process
-    if (kproc_create(kproc_idle, "idle", PROC_TYPE_KERNEL) < 0) {
-        kernel_panic("kproc: unable to create idle process");
-    }
+    // Initialize the process table
+    memset(&proc_table, 0, sizeof(proc_table));
+
+    // Initialize the process stacks
+    memset(proc_stack, 0, sizeof(proc_stack));
+
+    // Create/execute the idle process (kproc_idle)
+    pid = kproc_create(kproc_idle, "idle", PROC_TYPE_KERNEL);
+
+    kernel_log_info("Created idle process %d", pid);
+
+    // Create 4 instances of the program shell and attach to individual tty's 
+        // Create a user process with a pointer to a program shell
+
+        // Attach the process to the TTY using kproc_attach_tty
+
+
+
+
 }
+
