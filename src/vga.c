@@ -1,8 +1,3 @@
-/**
- * CPE/CSC 159 - Operating System Pragmatics
- * California State University, Sacramento
- *
- */
 #include <spede/machine/io.h>
 #include <spede/stdarg.h>
 #include <spede/stdio.h>
@@ -172,7 +167,7 @@ int vga_get_fg(void) {
  *
  * @param c - Character to print
  */
-void vga_setc(unsigned char c) {
+void vga_setc(char c) {
     unsigned short *vga_buf = VGA_BASE;
     vga_buf[vga_pos_x + vga_pos_y * VGA_WIDTH] = VGA_CHAR(vga_color_bg, vga_color_fg, c);
 }
@@ -193,7 +188,7 @@ void vga_setc(unsigned char c) {
  *
  * @param c - character to print
  */
-void vga_putc(unsigned char c) {
+void vga_putc(char c) {
     unsigned short *vga_buf = VGA_BASE;
 
     // Handle scecial characters
@@ -285,7 +280,7 @@ void vga_puts(char *s) {
  * @param fg - foreground color
  * @param c - character to print
  */
-void vga_putc_at(int x, int y, int bg, int fg, unsigned char c) {
+void vga_putc_at(int x, int y, int bg, int fg, char c) {
     int cur_x = vga_pos_x;
     int cur_y = vga_pos_y;
     int cur_bg = vga_color_bg;

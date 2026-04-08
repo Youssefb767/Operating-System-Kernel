@@ -8,6 +8,19 @@ Jahmeen Thomas
 
 ## Feedback History
 
+### [03/30/2026] Phase 3 Feedback
+
+**Strengths**
+- The system compiles successfully.
+- `kproc_create()`, `kproc_destroy()`, and `kproc_init()` are implemented.
+- `scheduler_run()`, `scheduler_add()`, `scheduler_remove()`, and `scheduler_init()` are implemented.
+- Processes are added to the scheduler during creation and removed during destruction.
+- The run queue logic for scheduling is implemented.
+- The tag is set correctly.
+
+**Areas for Improvement**
+- Consider adding logging for process destruction and context switches.
+
 ### [03/16/2026] Phase 2 Feedback
 
 **Strengths**
