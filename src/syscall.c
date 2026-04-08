@@ -125,6 +125,7 @@ int sys_get_name(char *name) {
  * @param seconds - number of seconds the process should sleep
  */
 void proc_sleep(int secs) {
+    _syscall1(SYSCALL_PROC_SLEEP, secs);
 }
 
 /**
@@ -132,6 +133,9 @@ void proc_sleep(int secs) {
  * @param exitcode An exit code to return to the parent process
  */
 void proc_exit(int exitcode) {
+    _syscall1(SYSCALL_PROC_EXIT, exitcode);
+
+    while (1);
 }
 
 /**
