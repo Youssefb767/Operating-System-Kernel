@@ -67,14 +67,7 @@ int _syscall1(int syscall, int arg1) {
 int _syscall2(int syscall, int arg1, int arg2) {
     int rc = -1;
 
-    asm("movl %1, %%eax;"
-        "movl %2, %%ebx;"
-        "movl %3, %%ecx;"
-        "int $0x80;"
-        "movl %%eax, %0;"
-        : "=g"(rc)
-        : "g"(syscall), "g"(arg1), "g"(arg2)
-        : "%eax", "%ebx", "%ecx");
+    // Implement me!
 
     return rc;
 }
@@ -90,15 +83,7 @@ int _syscall2(int syscall, int arg1, int arg2) {
 int _syscall3(int syscall, int arg1, int arg2, int arg3) {
     int rc = -1;
 
-    asm("movl %1, %%eax;"
-        "movl %2, %%ebx;"
-        "movl %3, %%ecx;"
-        "movl %4, %%edx;"
-        "int $0x80;"
-        "movl %%eax, %0;"
-        : "=g"(rc)
-        : "g"(syscall), "g"(arg1), "g"(arg2), "g"(arg3)
-        : "%eax", "%ebx", "%ecx", "%edx");
+    // Implement me!
 
     return rc;
 }
@@ -125,7 +110,6 @@ int sys_get_name(char *name) {
  * @param seconds - number of seconds the process should sleep
  */
 void proc_sleep(int secs) {
-    _syscall1(SYSCALL_PROC_SLEEP, secs);
 }
 
 /**
@@ -133,9 +117,6 @@ void proc_sleep(int secs) {
  * @param exitcode An exit code to return to the parent process
  */
 void proc_exit(int exitcode) {
-    _syscall1(SYSCALL_PROC_EXIT, exitcode);
-
-    while (1);
 }
 
 /**
@@ -143,7 +124,7 @@ void proc_exit(int exitcode) {
  * @return process id
  */
 int proc_get_pid(void) {
-    return _syscall0(SYSCALL_PROC_GET_PID);
+    return -1;
 }
 
 /**
@@ -152,7 +133,7 @@ int proc_get_pid(void) {
  * @return 0 on success, -1 or other non-zero value on error
  */
 int proc_get_name(char *name) {
-    return _syscall1(SYSCALL_PROC_GET_NAME, (int)name);
+    return -1;
 }
 
 /**
@@ -163,7 +144,7 @@ int proc_get_name(char *name) {
  * @return -1 on error or value indicating number of bytes copied
  */
 int io_write(int io, char *buf, int n) {
-    return _syscall3(SYSCALL_IO_WRITE, io, (int)buf, n);
+    return 0;
 }
 
 /**
@@ -174,7 +155,7 @@ int io_write(int io, char *buf, int n) {
  * @return -1 on error or value indicating number of bytes copied
  */
 int io_read(int io, char *buf, int n) {
-    return _syscall3(SYSCALL_IO_READ, io, (int)buf, n);
+    return 0;
 }
 
 /**
@@ -183,5 +164,5 @@ int io_read(int io, char *buf, int n) {
  * @return -1 on error or 0 on success
  */
 int io_flush(int io) {
-    return _syscall1(SYSCALL_IO_FLUSH, io);
+    return 0;
 }
