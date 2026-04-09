@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "tty.h"
 #include "vga.h"
+#include "ringbuf.h"
 
 // TTY Table
 struct tty_t tty_table[TTY_MAX];
@@ -52,7 +53,11 @@ int tty_get_active(void) {
  * @return pointer to TTY table entry
  */
 struct tty_t *tty_get(int tty) {
-    return NULL;
+    if (tty < 0 || tty >= TTY_MAX) {
+        return NULL;
+    }
+
+    return &tty_table[tty];
 }
 
 /**
@@ -65,12 +70,16 @@ void tty_refresh(void) {
     }
 
     struct tty_t *tty = active_tty;
+    char c;
 
     // Handle new I/O (characters in the output buffer)
-    // while not ringbuf_is_empty
+    while (!ringbuf_is_empty(&tty->io_output)) {
         // Read next character from ring buffer
-        // Send next characture to the tty screen buffer
-
+        if (ringbuf_read(&tty->io_output, &c) == 0) {
+            // Send next characture to the tty screen buffer
+            tty_update(c);
+        }
+    }
 
     if (tty->refresh) {
 
@@ -100,6 +109,17 @@ void tty_refresh(void) {
  * @param c - character to write into the input buffer
  */
 void tty_input(char c) {
+    if (!active_tty) {
+        return;
+    }
+
+    // Write into the input ring buffer
+    ringbuf_write(&active_tty->io_input, c);
+
+    // If echo enabled, also send output to ringbuf
+    if (active_tty->echo) {
+        ringbuf_write(&active_tty->io_output, c);
+    }
 }
 
 /**
@@ -181,6 +201,8 @@ void tty_init(void) {
         tty_table[i].color_bg = VGA_COLOR_BLACK;
         tty_table[i].color_fg = VGA_COLOR_LIGHT_GREY;
         tty_table[i].echo = 0;
+        ringbuf_init(&tty_table[i].io_input);
+        ringbuf_init(&tty_table[i].io_output);
     }
 
     // Select tty 0 to start with
