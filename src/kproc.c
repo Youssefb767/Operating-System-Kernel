@@ -16,8 +16,6 @@
 #include "timer.h"
 #include "queue.h"
 #include "vga.h"
-#include "prog_user.h"
-#include "syscall_common.h"
 
 // Next available process id to be assigned
 int next_pid;
@@ -34,7 +32,7 @@ unsigned char proc_stack[PROC_MAX][PROC_STACK_SIZE];
 /**
  * Looks up a process in the process table via the process id
  * @param pid - process id
- * @return pointer to the pruocess entry, NULL or error or if not found
+ * @return pointer to the process entry, NULL or error or if not found
  */
 proc_t *pid_to_proc(int pid) {
     int i;
@@ -100,23 +98,7 @@ proc_t *entry_to_proc(int entry) {
  * @return process id of the created process, -1 on error
  */
 int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
-    int proc_entry;
-    proc_t *proc;
-
-    // Ensure that valid parameters have been specified
-    if (proc_name == NULL) {
-        kernel_panic("Invalid process title\n");
-    }
-
-    if (proc_ptr == NULL) {
-        kernel_panic("Invalid function pointer");
-    }
-
-    // Allocate the PCB entry for the process
-    if (queue_out(&proc_allocator, &proc_entry) != 0) {
-        kernel_log_warn("Unable to allocate a process entry");
-        return -1;
-    }
+    proc_t *proc = NULL;
 
     // Allocate an entry in the process table via the process allocator
     int entry;
@@ -228,26 +210,6 @@ void kproc_idle(void) {
 void kproc_test(void) {
     // Loop forever
     while (1);
-}
-
-/**
- * Attaches a process to a TTY
- * Points the input / output buffers to the TTY's input/output buffers
- *   IO[0] should be input
- *   IO[1] should be output
- */
-int kproc_attach_tty(int pid, int tty_number) {
-    proc_t *proc = pid_to_proc(pid);
-    struct tty_t *tty = tty_get(tty_number);
-
-    if (proc && tty) {
-        kernel_log_debug("Attaching process %d to TTY id to PID %d", proc->pid, tty_number);
-        proc->io[PROC_IO_IN] = &tty->io_input;
-        proc->io[PROC_IO_OUT] = &tty->io_output;
-        return 0;
-    }
-
-    return -1;
 }
 
 /**
