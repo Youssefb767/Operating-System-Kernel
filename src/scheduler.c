@@ -45,8 +45,14 @@ void scheduler_run(void) {
     int pid;
 
     // Ensure that processes not in the active state aren't still scheduled
+<<<<<<< syscall
+    if (active_proc && active_proc->state != ACTIVE) {
+        active_proc = NULL;
+    }
+=======
     if (active_proc && active_proc->state == NONE)
         active_proc = NULL;
+>>>>>>> main
 
     // Check if we have an active process
     if (active_proc) {
@@ -62,6 +68,31 @@ void scheduler_run(void) {
             else
                 active_proc->state = IDLE;
 
+<<<<<<< syscall
+            if (active_proc->pid != 0) {
+                // Add the process to the scheuler
+                scheduler_add(active_proc);
+            } else {
+                active_proc->state = IDLE;
+            }
+
+            // Unschedule the current process
+            kernel_log_trace("Unscheduling process pid=%d, name=%s", active_proc->pid, active_proc->name);
+            active_proc = NULL;
+        }
+    }
+
+    // Check if we have a process scheduled or not
+    if (!active_proc) {
+        // Get the proces id from the run queue
+        if (queue_out(&run_queue, &pid) != 0) {
+            // default to process id 0 (idle task)
+            pid = 0;
+        }
+
+        active_proc = pid_to_proc(pid);
+        kernel_log_trace("Scheduling process pid=%d, name=%s", active_proc->pid, active_proc->name);
+=======
             // Unschedule the active process
             active_proc = NULL;
         }
@@ -79,15 +110,23 @@ void scheduler_run(void) {
         // Fallback to idle task if needed
         if (!active_proc)
             active_proc = pid_to_proc(0);
+>>>>>>> main
     }
 
     // Make sure we have a valid process at this point
     if (!active_proc) {
+<<<<<<< syscall
+        kernel_panic("Unable to schedule a process!");
+    }
+
+    // Ensure that the process state is correct
+=======
         kernel_panic("scheduler: failed to select active process");
         return;
     }
 
     // Ensure that the process state is set
+>>>>>>> main
     active_proc->state = ACTIVE;
 }
 
@@ -96,6 +135,19 @@ void scheduler_run(void) {
  * @param proc - pointer to the process entry
  */
 void scheduler_add(proc_t *proc) {
+<<<<<<< syscall
+    if (!proc) {
+        kernel_panic("Invalid process!");
+    }
+
+    proc->scheduler_queue = &run_queue;
+    proc->state = IDLE;
+    proc->cpu_time = 0;
+
+    if (queue_in(proc->scheduler_queue, proc->pid) != 0) {
+        kernel_panic("Unable to add the process to the scheduler");
+    }
+=======
     if (!proc)
         return;
 
@@ -117,6 +169,7 @@ void scheduler_add(proc_t *proc) {
     
     // Set the process state
     proc->state = IDLE;
+>>>>>>> main
 }
 
 /**
@@ -124,6 +177,54 @@ void scheduler_add(proc_t *proc) {
  * @param proc - pointer to the process entry
  */
 void scheduler_remove(proc_t *proc) {
+<<<<<<< syscall
+    int pid;
+
+    if (!proc) {
+        kernel_panic("Invalid process!");
+        exit(1);
+    }
+
+    if (proc->scheduler_queue) {
+        for (int i = 0; i < proc->scheduler_queue->size; i++) {
+            if (queue_out(proc->scheduler_queue, &pid) != 0) {
+                kernel_panic("Unable to queue out the process entry");
+            }
+
+            if (proc->pid == pid) {
+                // Found the process
+                // continue iterating so the run queue order is maintained
+                continue;
+            }
+
+            // Add the item back to the run queue
+            if (queue_in(proc->scheduler_queue, pid) != 0) {
+                kernel_panic("Unable to queue process back to the run queue");
+            }
+        }
+
+        // Set the queue to NULL since it does not exist in a queue any longer
+        proc->scheduler_queue = NULL;
+    }
+
+    // If the process is the current process, ensure that the current
+    // process is reset so a new process will be scheduled
+    if (proc == active_proc) {
+        active_proc = NULL;
+    }
+}
+
+/**
+ * Puts a process to sleep
+ * @param proc - pointer to the process entry
+ * @param time - number of ticks to sleep
+ */
+void scheduler_sleep(proc_t *proc, int time) {
+    // Set the sleep time
+    // Set the process state to SLEEPING
+    // Remove the process from the scheduler
+    // Add the proces to the sleep queue
+=======
     int n;
     int pid;
 
@@ -151,6 +252,7 @@ void scheduler_remove(proc_t *proc) {
 
     if (proc->state != NONE)
         proc->state = IDLE;
+>>>>>>> main
 }
 
 /**
@@ -159,10 +261,18 @@ void scheduler_remove(proc_t *proc) {
 void scheduler_init(void) {
     kernel_log_info("Initializing scheduler");
 
+<<<<<<< syscall
+    /* Initialize the run queue */
+    queue_init(&run_queue);
+
+    /* Register the timer callback */
+    timer_callback_register(&scheduler_timer, 1, -1);
+=======
     // Initialize any data structures or variables
     queue_init(&run_queue);
 
     // Register the timer callback (scheduler_timer) to run every tick
     timer_callback_register(scheduler_timer, 1, -1);
+>>>>>>> main
 }
 
