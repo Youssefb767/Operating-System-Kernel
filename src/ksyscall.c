@@ -38,6 +38,38 @@ void ksyscall_irq_handler(void) {
 
     // Ensure that the EAX register for the active process contains the return value
 
+    if (active_proc->trapframe->eax == SYSCALL_NONE) {
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_IO_READ) {
+        rc = ksyscall_io_read(
+            (int)active_proc->trapframe->ebx,
+            (char *)active_proc->trapframe->ecx,
+            (int)active_proc->trapframe->edx
+        );
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_IO_WRITE) {
+        rc = ksyscall_io_write(
+            (int)active_proc->trapframe->ebx,
+            (char *)active_proc->trapframe->ecx,
+            (int)active_proc->trapframe->edx
+        );
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_IO_FLUSH) {
+        // Cast the argument as a signed int
+        rc = ksyscall_io_flush((int)active_proc->trapframe->ebx);
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
     if (active_proc->trapframe->eax == SYSCALL_SYS_GET_TIME) {
         rc = ksyscall_sys_get_time();
         active_proc->trapframe->eax = rc;
@@ -51,6 +83,33 @@ void ksyscall_irq_handler(void) {
         return;
     }
 
+    if (active_proc->trapframe->eax == SYSCALL_PROC_SLEEP) {
+        // Cast the argument as a signed int
+        rc = ksyscall_proc_sleep((int)active_proc->trapframe->ebx);
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_PROC_EXIT) {
+        rc = ksyscall_proc_exit();
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_PROC_GET_PID) {
+        // Cast the argument as a signed int
+        rc = ksyscall_proc_get_pid();
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
+    if (active_proc->trapframe->eax == SYSCALL_PROC_GET_NAME) {
+        // Cast the argument as a char pointer
+        rc = ksyscall_proc_get_name((char *)active_proc->trapframe->ebx);
+        active_proc->trapframe->eax = rc;
+        return;
+    }
+
     kernel_panic("Invalid system call %d!", active_proc->trapframe->eax);
 }
 
@@ -59,6 +118,7 @@ void ksyscall_irq_handler(void) {
  */
 void ksyscall_init(void) {
     // Register the IDT entry and IRQ handler for the syscall IRQ (IRQ_SYSCALL)
+    interrupts_irq_register(IRQ_SYSCALL, isr_entry_syscall, ksyscall_irq_handler);
 }
 
 /**
@@ -76,10 +136,12 @@ int ksyscall_io_write(int io, char *buf, int size) {
 
     // Ensure that the active process has valid io
     // If not active_proc->....
+    if(active_proc == NULL || buf == NULL || io < 0 || io >= PROC_IO_MAX || active_proc->io[io] == NULL){
+        return -1;
+    }
 
     // Using ringbuf_write_mem - Write size bytes from buf to active_proc->io... 
-
-    return 0;
+    return ringbuf_write_mem(active_proc->io[io], buf, size);
 }
 
 /**
@@ -92,10 +154,12 @@ int ksyscall_io_write(int io, char *buf, int size) {
 int ksyscall_io_read(int io, char *buf, int size) {
 
     // Ensure there is active process, IO buffer is within range, active process has valid io
+    if(active_proc == NULL || buf == NULL || io < 0 || io >= PROC_IO_MAX || active_proc->io[io] == NULL){
+        return -1;
+    }
 
     // Using ringbuf_read_mem - Read size bytes from active_proc->io to buf
-
-    return 0;
+    return ringbuf_read_mem(active_proc->io[io], buf, size);
 }
 
 /**
@@ -106,9 +170,12 @@ int ksyscall_io_read(int io, char *buf, int size) {
 int ksyscall_io_flush(int io) {
 
     // Ensure active process, etc... 
+    if(active_proc == NULL || io < 0 || io >= PROC_IO_MAX || active_proc->io[io] == NULL){
+        return -1;
+    }
 
     // Use ringbuf_flush to flush io buffer
-    return -1;
+    return ringbuf_flush(active_proc->io[io]);
 }
 
 /**
@@ -138,14 +205,18 @@ int ksyscall_sys_get_name(char *name) {
  * @param seconds - number of seconds the process should sleep
  */
 int ksyscall_proc_sleep(int seconds) {
-    return -1;
+    if(active_proc == NULL){
+        return -1;
+    }
+    scheduler_sleep(active_proc, seconds);
+    return 0;
 }
 
 /**
  * Exits the current process
  */
 int ksyscall_proc_exit(void) {
-    return -1;
+    return kproc_destroy(active_proc);
 }
 
 /**
@@ -153,7 +224,11 @@ int ksyscall_proc_exit(void) {
  * @return process id or -1 on error
  */
 int ksyscall_proc_get_pid(void) {
-    return -1;
+    if(active_proc == NULL){
+        return -1;
+    }
+
+    return active_proc->pid;
 }
 
 /**
@@ -162,5 +237,10 @@ int ksyscall_proc_get_pid(void) {
  * @return 0 on success, -1 or other non-zero value on error
  */
 int ksyscall_proc_get_name(char *name) {
-    return -1;
+    if(active_proc == NULL || name == NULL){
+        return -1;
+    }
+
+    strncpy(name, active_proc->name, PROC_NAME_LEN);    
+    return 0;
 }
