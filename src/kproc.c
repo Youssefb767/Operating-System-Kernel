@@ -16,6 +16,9 @@
 #include "timer.h"
 #include "queue.h"
 #include "vga.h"
+#include "tty.h"
+#include "prog_user.h"
+#include "syscall_common.h"
 
 // Next available process id to be assigned
 int next_pid;
@@ -126,6 +129,12 @@ int kproc_create(void *proc_ptr, char *proc_name, proc_type_t proc_type) {
     proc->run_time = 0;
     proc->cpu_time = 0;
     proc->start_time = timer_get_ticks();
+    proc->sleep_time = 0;
+    proc->scheduler_queue = NULL;
+
+    for (int i = 0; i < PROC_IO_MAX; i++) {
+        proc->io[i] = NULL;
+    }
 
     // Copy the passed-in name to the name buffer in the process control block
     strncpy(proc->name, proc_name, PROC_NAME_LEN - 1);
@@ -192,6 +201,33 @@ int kproc_destroy(proc_t *proc) {
 }
 
 /**
+ *
+ */
+void kproc_attach(int pid, int driver, int id) {
+    proc_t *proc;
+    tty_t *tty;
+
+    (void)driver; // suppress unused warning if driver is not used yet
+
+    proc = pid_to_proc(pid);
+    if (!proc) {
+        kernel_log_warn("kproc: unable to attach invalid pid %d", pid);
+        return;
+    }
+
+    tty = tty_get(id);
+    if (!tty) {
+        kernel_log_warn("kproc: unable to attach pid %d to invalid tty %d", pid ,id);
+        return;
+    }
+
+    proc->io[PROC_IO_IN] = &tty->io_input;
+    proc->io[PROC_IO_OUT] = &tty->io_output;
+
+    kernel_log_info("kproc: attached pid %d to tty %d", pid, id);
+}
+
+/**
  * Idle Process
  */
 void kproc_idle(void) {
@@ -243,6 +279,12 @@ void kproc_init(void) {
         proc_table[i].cpu_time = 0;
         proc_table[i].stack = NULL;
         proc_table[i].trapframe = NULL;
+        proc_table[i].sleep_time = 0;
+        proc_table[i].scheduler_queue = NULL;
+
+        for (int j = 0; j < PROC_IO_MAX; j++) {
+            proc_table[i].io[j] = NULL;
+        }
 
         if (queue_in(&proc_allocator, i) != 0) {
             kernel_log_warn("kproc: unable to queue allocator entry %d", i);
@@ -252,5 +294,21 @@ void kproc_init(void) {
     // Create the idle process (kproc_idle) as a kernel process
     if (kproc_create(kproc_idle, "idle", PROC_TYPE_KERNEL) < 0) {
         kernel_panic("kproc: unable to create idle process");
+    }
+
+    // Create 4 shell processes and attach to tty 0..3
+    for (i = 0; i < 4; i++) {
+        int pid;
+        char name[PROC_NAME_LEN];
+
+        snprintf(name, sizeof(name), "shell%d", i);
+
+        pid = kproc_create(prog_shell, name, PROC_TYPE_USER);
+        if (pid < 0) {
+            kernel_log_warn("kproc: unable to create shell %d", i);
+            continue;
+        }
+
+        kproc_attach(pid, 0, i);
     }
 }
