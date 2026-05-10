@@ -12,7 +12,7 @@
 #include "queue.h"
 
 #ifndef PROC_MAX
-#define PROC_MAX        10   // maximum number of processes to support
+#define PROC_MAX        20   // maximum number of processes to support
 #endif
 
 #define PROC_IO_MAX     4    // Maximum process I/O buffers
@@ -33,7 +33,8 @@ typedef enum state_t {
     NONE,               // Process has no state (doesn't exist)
     IDLE,               // Process is idle (not scheduled)
     ACTIVE,             // Process is active (scheduled)
-    SLEEPING            // Process is sleeping (not scheduled)
+    SLEEPING,           // Process is sleeping (not scheduled)
+    WAITING,            // Process is waiting (not scheduled)
 } state_t;
 
 
@@ -102,8 +103,6 @@ proc_t *pid_to_proc(int pid);
  * @return pointer to the process entry, NULL or error or if not found
  */
 proc_t *entry_to_proc(int entry);
-
-void kproc_attach(int pid, int driver, int id);
 
 /**
  * Test process

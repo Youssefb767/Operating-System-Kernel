@@ -1,7 +1,6 @@
 /**
  * CPE/CSC 159 Operating System Pragmatics
  * California State University, Sacramento
- * 
  *
  * Operating system entry point
  */
@@ -17,6 +16,8 @@
 #include "kproc.h"
 #include "ksyscall.h"
 #include "test.h"
+#include "kmutex.h"
+#include "ksem.h"
 
 int main(void) {
     // Always iniialize the kernel
@@ -45,6 +46,12 @@ int main(void) {
 
     // Initialize system calls
     ksyscall_init();
+
+    // Initialize kernel semaphores
+    ksemaphores_init();
+
+    // Initialize kernel mutexes
+    kmutexes_init();
 
     // Test initialization
     test_init();
