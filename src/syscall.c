@@ -109,7 +109,7 @@ int sys_get_name(char *name) {
 
 /**
  * Puts the current process to sleep for the specified number of seconds
- * @param seconds - number of seconds the process should sleep
+ * @param secs - number of seconds the process should sleep
  */
 void proc_sleep(int secs) {
     _syscall1(SYSCALL_PROC_SLEEP, secs);
@@ -176,34 +176,35 @@ int io_flush(int io) {
  * @return -1 on error, all other values indicate the mutex id
  */
 int mutex_init(void) {
-    return -1;
+    return _syscall0(SYSCALL_MUTEX_INIT);
 }
 
 /**
  * Destroys a mutex
- * @return -1 on error, 0 on sucecss
+ * @param mutex - mutex id
+ * @return -1 on error, 0 on success
  */
 int mutex_destroy(int mutex) {
-    return -1;
+    return _syscall1(SYSCALL_MUTEX_DESTROY, mutex);
 }
 
 /**
  * Locks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  * @note If the mutex is already locked, process will block/wait.
  */
 int mutex_lock(int mutex) {
-    return -1;
+    return _syscall1(SYSCALL_MUTEX_LOCK, mutex);
 }
 
 /**
  * Unlocks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  */
 int mutex_unlock(int mutex) {
-    return -1;
+    return _syscall1(SYSCALL_MUTEX_UNLOCK, mutex);
 }
 
 /**
@@ -212,7 +213,7 @@ int mutex_unlock(int mutex) {
  * @return -1 on error, all other values indicate the semaphore id
  */
 int sem_init(int value) {
-    return -1;
+    return _syscall1(SYSCALL_SEM_INIT, value);
 }
 
 /**
@@ -221,7 +222,7 @@ int sem_init(int value) {
  * @return -1 on error, 0 on success
  */
 int sem_destroy(int sem) {
-    return -1;
+    return _syscall1(SYSCALL_SEM_DESTROY, sem);
 }
 
 /**
@@ -230,7 +231,7 @@ int sem_destroy(int sem) {
  * @return -1 on error, otherwise the current semaphore count
  */
 int sem_wait(int sem) {
-    return -1;
+    return _syscall1(SYSCALL_SEM_WAIT, sem);
 }
 
 /**
@@ -239,6 +240,5 @@ int sem_wait(int sem) {
  * @return -1 on error, otherwise the current semaphore count
  */
 int sem_post(int sem) {
-    return -1;
+    return _syscall1(SYSCALL_SEM_POST, sem);
 }
-
