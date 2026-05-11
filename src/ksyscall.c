@@ -93,31 +93,31 @@ void ksyscall_irq_handler(void) {
             break;
 
         case SYSCALL_MUTEX_DESTROY:
-            rc = ksyscall_mutex_destroy(arg1);
+            rc = ksyscall_mutex_destroy((int)arg1);
             break;
 
         case SYSCALL_MUTEX_LOCK:
-            rc = ksyscall_mutex_lock(arg1);
+            rc = ksyscall_mutex_lock((int)arg1);
             break;
 
         case SYSCALL_MUTEX_UNLOCK:
-            rc = ksyscall_mutex_unlock(arg1);
+            rc = ksyscall_mutex_unlock((int)arg1);
             break;
 
         case SYSCALL_SEM_INIT:
-            rc = ksyscall_sem_init(arg1);
+            rc = ksyscall_sem_init((int)arg1);
             break;
 
         case SYSCALL_SEM_DESTROY:
-            rc = ksyscall_sem_destroy(arg1);
+            rc = ksyscall_sem_destroy((int)arg1);
             break;
 
         case SYSCALL_SEM_POST:
-            rc = ksyscall_sem_post(arg1);
+            rc = ksyscall_sem_post((int)arg1);
             break;
 
         case SYSCALL_SEM_WAIT:
-            rc = ksyscall_sem_wait(arg1);
+            rc = ksyscall_sem_wait((int)arg1);
             break;
 
         default:
@@ -146,10 +146,6 @@ void ksyscall_init(void) {
  * @return -1 on error or value indicating number of bytes copied
  */
 int ksyscall_io_write(int io, char *buf, int size) {
-    if (!active_proc) {
-        return -1;
-    }
-
     if (!active_proc) {
         return -1;
     }
@@ -186,7 +182,6 @@ int ksyscall_io_read(int io, char *buf, int size) {
     }
 
     return ringbuf_read_mem(active_proc->io[io], buf, size);
-
 }
 
 /**
@@ -281,34 +276,35 @@ int ksyscall_proc_get_name(char *name) {
  * @return -1 on error, all other values indicate the mutex id
  */
 int ksyscall_mutex_init(void) {
-    return -1;
+    return kmutex_init();
 }
 
 /**
- * Detroys a mutex
- * @return -1 on error, 0 on sucecss
+ * Destroys a mutex
+ * @param mutex - mutex id
+ * @return -1 on error, 0 on success
  */
 int ksyscall_mutex_destroy(int mutex) {
-    return -1;
+    return kmutex_destroy(mutex);
 }
 
 /**
  * Locks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  * @note If the mutex is already locked, process will block/wait.
  */
 int ksyscall_mutex_lock(int mutex) {
-    return -1;
+    return kmutex_lock(mutex);
 }
 
 /**
  * Unlocks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  */
 int ksyscall_mutex_unlock(int mutex) {
-    return -1;
+    return kmutex_unlock(mutex);
 }
 
 /**
@@ -317,7 +313,7 @@ int ksyscall_mutex_unlock(int mutex) {
  * @return -1 on error, all other values indicate the semaphore id
  */
 int ksyscall_sem_init(int value) {
-    return -1;
+    return ksem_init(value);
 }
 
 /**
@@ -326,7 +322,7 @@ int ksyscall_sem_init(int value) {
  * @return -1 on error, 0 on success
  */
 int ksyscall_sem_destroy(int sem) {
-    return -1;
+    return ksem_destroy(sem);
 }
 
 /**
@@ -335,7 +331,7 @@ int ksyscall_sem_destroy(int sem) {
  * @return -1 on error, otherwise the current semaphore count
  */
 int ksyscall_sem_wait(int sem) {
-    return -1;
+    return ksem_wait(sem);
 }
 
 /**
@@ -344,6 +340,5 @@ int ksyscall_sem_wait(int sem) {
  * @return -1 on error, otherwise the current semaphore count
  */
 int ksyscall_sem_post(int sem) {
-    return -1;
+    return ksem_post(sem);
 }
-
