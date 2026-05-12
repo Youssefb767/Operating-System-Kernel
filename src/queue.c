@@ -97,3 +97,12 @@ int queue_out(queue_t *queue, int *item) {
 
     return 0;
 }
+
+bool queue_is_empty(queue_t *queue) {
+    if (!queue) {
+        return true;
+    }
+
+    return queue->size == 0;
+}
+
