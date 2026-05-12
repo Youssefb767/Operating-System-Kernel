@@ -78,6 +78,8 @@ void prog_shell(void) {
         reading = 1;
         while (reading) {
             mutex_lock(shell_mutex[pid % 2]);
+            mutex_lock(shell_mutex[pid % 2]);
+            
             buflen = io_read(PROC_IO_IN, buf, BUF_SIZE);
 
             for (int i = 0; i < buflen; i++) {
@@ -89,6 +91,7 @@ void prog_shell(void) {
                     io_write(PROC_IO_OUT, &buf[i], 1);
                 }
             }
+            mutex_unlock(shell_mutex[pid % 2]);
             mutex_unlock(shell_mutex[pid % 2]);
         }
 
