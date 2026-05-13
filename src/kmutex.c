@@ -77,9 +77,12 @@ int kmutex_init(void) {
 
     mutex->owner = NULL;
     
-    if(queue_init(&mutex->wait_queue) == -1){
+    if (queue_init(&mutex->wait_queue) == -1) {
         kernel_log_error("kmutex: failed to initialize mutex wait queue");
+        mutex->allocated = 0;
+        queue_in(&mutex_queue, id);
         return -1;
+    }
     }
 
     // return the mutex id
