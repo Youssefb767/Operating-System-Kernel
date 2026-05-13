@@ -109,7 +109,7 @@ int kmutex_destroy(int id) {
     }
 
     // If the mutex is locked, prevent it from being destroyed (return error)
-    if(mutex->lock_count > 0){
+    if (mutex->lock_count > 0 || !queue_is_empty(&mutex->wait_queue)) {
         kernel_log_error("kmutex: mutex id %d is already locked", id);
         return -1;
     }
