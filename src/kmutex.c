@@ -83,7 +83,6 @@ int kmutex_init(void) {
         queue_in(&mutex_queue, id);
         return -1;
     }
-    }
 
     // return the mutex id
     return id;
