@@ -159,13 +159,12 @@ int kmutex_lock(int id) {
     //      process to be scheduled
     
     if(mutex->lock_count > 0){
-        active_proc->state = WAITING;
-
         if(queue_in(&mutex->wait_queue, active_proc->pid) == -1){
             kernel_log_error("kmutex: failed to add active process to mutex wait queue");
             return -1;
         }
-
+        
+        active_proc->state = WAITING;
         scheduler_remove(active_proc);
     }
 
