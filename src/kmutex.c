@@ -131,52 +131,54 @@ int kmutex_destroy(int id) {
  * @return -1 on error, otherwise the current lock count
  */
 int kmutex_lock(int id) {
-    // look up the mutex in the mutex table
-    if(id < 0 || id >= MUTEX_MAX){
-        kernel_log_error("kmutex: mutex id %d is outside valid range", id);
+    mutex_t *mutex;
+
+    if (id < 0 || id >= MUTEX_MAX) {
+        kernel_log_error("kmutex: invalid mutex id %d", id);
         return -1;
     }
 
-    mutex_t *mutex = &mutexes[id];
+    mutex = &mutexes[id];
 
     if (!mutex->allocated) {
         kernel_log_error("kmutex: mutex id %d is not allocated", id);
         return -1;
     }
 
-    // Handle recursive locking
+    if (!active_proc) {
+        kernel_log_error("kmutex: no active process");
+        return -1;
+    }
+
+    acquire_splock(&mutex->lock);
+
     if (mutex->owner == active_proc) {
         mutex->lock_count++;
+        release_splock(&mutex->lock);
         return mutex->lock_count;
     }
 
-    // If the mutex is already locked
-    //   1. Set the active process state to WAITING
-    //   2. Add the process to the mutex wait queue (so it can take
-    //      the mutex when it is unlocked)
-    //   3. Remove the process from the scheduler, allow another
-    //      process to be scheduled
-    
-    if(mutex->lock_count > 0){
-        if(queue_in(&mutex->wait_queue, active_proc->pid) == -1){
-            kernel_log_error("kmutex: failed to add active process to mutex wait queue");
-            return -1;
-        }
-        
-        active_proc->state = WAITING;
-        scheduler_remove(active_proc);
-    }
-
-    // If the mutex is not locked
-    //   1. set the mutex owner to the active process
-    // Increment the lock count
-    else{
+    if (mutex->lock_count == 0) {
         mutex->owner = active_proc;
         mutex->lock_count++;
+
+        release_splock(&mutex->lock);
+        return mutex->lock_count;
     }
 
-    // Return the mutex lock count
-    return mutex->lock_count;
+    if (queue_in(&mutex->wait_queue, active_proc->pid) == -1) {
+        release_splock(&mutex->lock);
+        kernel_log_error("kmutex: failed to add active process to mutex wait queue");
+        return -1;
+    }
+
+    active_proc->state = WAITING;
+
+    release_splock(&mutex->lock);
+
+    scheduler_remove(active_proc);
+
+    return 0;
 }
 
 /**
