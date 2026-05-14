@@ -8,6 +8,23 @@ Jahmeen Thomas
 
 ## Feedback History
 
+### [05/14/2026] Phase 5 Feedback
+**Checklist Completion**
+- Part 1: Instantiated the ”ping” and "pong" program (prog ping)
+- Part 2: Mutexes implemented: `kmutexes_init`, `kmutex_init`, `kmutex_detroy`, `kmutex_lock`, `kmutex_unlock`, `ksyscall_mutex_init`, `ksyscall_mutex_unlock`, `ksyscall_mutex_lock`.
+- Part 3: Semaphores implemented: `ksemphores_init`, `ksem_init`, `ksem_destory`, `ksem_wait`, `ksem_post`, `ksyscall_sem_init`, `ksyscall_sem_destory`, `ksyscall_sem_wait`, `ksyscall_sem_post`.
+- Part 4: Lock (mutual exclusion) implemeted. `ksem_lock`, `ksem_init`, `ksem_unlock`, `kmutex_init`, `kmutex_lock`.
+- Part 4: Lock is not implemented, `kmutex_unlock`
+
+**Strengths**
+- The system compiles and runs.
+- The tag is set correctly.
+
+**Weakness**
+- When I typed in your shell, the Delete/Backspace key did not appear to update the TTY screen content correctly. For example, if I typed "hela", pressed Delete/Backspace, and then typed p, the screen still did not display the corrected command as "help". This is a relatively minor issue functionally, but it has a noticeable impact on the user experience and makes the shell feel less polished. 
+- I noticed that the team did not implement mutual exclusion for the `kmutex_unlock`. As a result, Part 4 appears to be only partially completed. Without adding a spinlock or another synchronization mechanism to protect the mutex data, race conditions can occur when multiple threads (here are processes) access or modify the mutex concurrently.  
+
+
 ### [04/23/2026] Phase 4 Feedback
 
 **Strengths**
