@@ -7,6 +7,7 @@
 
 #include <spede/stdio.h>
 #include <spede/string.h>
+
 #include "syscall.h"
 
 #define BUF_SIZE 128
@@ -19,14 +20,14 @@
     } \
 }
 
-#define CMD_EXIT "exit"
-#define CMD_HELP "help"
+#define CMD_EXIT  "exit"
+#define CMD_HELP  "help"
 #define CMD_SLEEP "sleep"
-#define CMD_TIME "time"
-#define CMD_LOCK "lock"
+#define CMD_TIME  "time"
+#define CMD_LOCK  "lock"
 
 /*
- * Mutexes for the lock
+ * Mutexes for the lock command
  */
 int shell_mutex[2] = {-1, -1};
 
@@ -41,7 +42,7 @@ void prog_shell(void) {
     int pid = proc_get_pid();
 
     if (shell_mutex[pid % 2] < 0) {
-        shell_mutex[pid % 2 ] = mutex_init();
+        shell_mutex[pid % 2] = mutex_init();
     }
 
     if (proc_get_name(name) != 0) {
@@ -71,24 +72,52 @@ void prog_shell(void) {
     pprintf("... and awake at time %d!\n\n", sys_get_time());
 
     while (1) {
-        pprintf("%s[%d]$ ", os_name, pid);
-        char input[128] = {0};
+        char input[BUF_SIZE];
         int input_len = 0;
 
+        memset(input, 0, sizeof(input));
+        memset(buf, 0, sizeof(buf));
+
+        pprintf("%s[%d]$ ", os_name, pid);
+
         reading = 1;
+
         while (reading) {
             mutex_lock(shell_mutex[pid % 2]);
+            mutex_lock(shell_mutex[pid % 2]);
+
             buflen = io_read(PROC_IO_IN, buf, BUF_SIZE);
 
             for (int i = 0; i < buflen; i++) {
-                if (buf[i] == '\n' || buf[i] == 0) {
-                    io_write(PROC_IO_OUT, &buf[i], 1);
+                if (buf[i] == '\n' || buf[i] == '\r' || buf[i] == 0) {
+                    char newline = '\n';
+
+                    io_write(PROC_IO_OUT, &newline, 1);
+
+                    input[input_len] = '\0';
                     reading = 0;
-                } else if ( buf[i] != 0) {
-                    input[input_len++] = buf[i];
-                    io_write(PROC_IO_OUT, &buf[i], 1);
+                    break;
+                } else if (buf[i] == '\b' || buf[i] == 127) {
+                    if (input_len > 0) {
+                        char erase[] = "\b \b";
+
+                        input_len--;
+                        input[input_len] = '\0';
+
+                        io_write(PROC_IO_OUT, erase, 3);
+                    }
+                } else {
+                    if (input_len < BUF_SIZE - 1) {
+                        input[input_len] = buf[i];
+                        input_len++;
+                        input[input_len] = '\0';
+
+                        io_write(PROC_IO_OUT, &buf[i], 1);
+                    }
                 }
             }
+
+            mutex_unlock(shell_mutex[pid % 2]);
             mutex_unlock(shell_mutex[pid % 2]);
         }
 
@@ -100,7 +129,7 @@ void prog_shell(void) {
                 pprintf("\tsleep\t  puts the process to sleep for %d seconds\n", sleep_seconds);
                 pprintf("\ttime\t  displays the current system time\n");
                 pprintf("\n");
-            } else if(strncmp(input, CMD_SLEEP, strlen(CMD_SLEEP)) == 0) {
+            } else if (strncmp(input, CMD_SLEEP, strlen(CMD_SLEEP)) == 0) {
                 pprintf("Sleeping for %d seconds at time %d ... ", sleep_seconds, sys_get_time());
                 proc_sleep(sleep_seconds);
                 pprintf("... and awake at time %d!\n", sys_get_time());
@@ -169,5 +198,72 @@ void prog_pong(void) {
         pprintf("%04d pingpong[%02d] pong!\n", sys_get_time(), pid);
         proc_sleep((pid % 2) + 2);
         sem_post(*ping);
+    }
+}
+
+/**
+ * Remote serial terminal program.
+ */
+void remote_term(void) {
+    char username[BUF_SIZE];
+    char password[BUF_SIZE];
+    char command[BUF_SIZE];
+    char msg[256];
+
+    int port_num = PortAlloc();
+
+    if (port_num < 0) {
+        proc_exit(-1);
+    }
+
+    while (1) {
+        memset(username, 0, sizeof(username));
+        memset(password, 0, sizeof(password));
+
+        PortWrite("Now enter (username): ", port_num);
+        PortRead(username, port_num);
+
+        PortWrite("\r\nNow enter (password): ", port_num);
+        PortRead(password, port_num);
+
+        if (strcmp(username, "spede") == 0 &&
+            strcmp(password, "spede") == 0) {
+            break;
+        }
+
+        PortWrite("\r\nInvalid username or password.\r\n\r\n", port_num);
+    }
+
+    PortWrite("\r\nHello, World! Team MyOS here!\r\n", port_num);
+
+    while (1) {
+        memset(command, 0, sizeof(command));
+
+        PortWrite("spede> ", port_num);
+        PortRead(command, port_num);
+
+        PortWrite("\r\n", port_num);
+
+        if (strcmp(command, "help") == 0) {
+            PortWrite("Enter one of the following commands:\r\n", port_num);
+            PortWrite("exit exits the process\r\n", port_num);
+            PortWrite("sleep puts the process to sleep for 10 seconds\r\n", port_num);
+            PortWrite("time displays the current system time\r\n", port_num);
+        } else if (strcmp(command, "time") == 0) {
+            memset(msg, 0, sizeof(msg));
+            snprintf(msg, sizeof(msg), "The current time is %d seconds\r\n", sys_get_time());
+            PortWrite(msg, port_num);
+        } else if (strcmp(command, "sleep") == 0) {
+            PortWrite("Sleeping for 10 seconds...\r\n", port_num);
+            proc_sleep(10);
+            PortWrite("Awake.\r\n", port_num);
+        } else if (strcmp(command, "exit") == 0) {
+            PortWrite("Exiting remote terminal.\r\n", port_num);
+            proc_exit(0);
+        } else if (command[0] != '\0') {
+            PortWrite("Unknown command: ", port_num);
+            PortWrite(command, port_num);
+            PortWrite("\r\n", port_num);
+        }
     }
 }

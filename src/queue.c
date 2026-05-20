@@ -5,6 +5,8 @@
  * Simple circular queue implementation
  */
 
+#include <spede/string.h>
+
 #include "queue.h"
 
 /**
@@ -19,13 +21,13 @@ int queue_init(queue_t *queue) {
         return -1;
     }
 
-    for (int i = 0; i < QUEUE_SIZE; i++) {
-        queue->items[i] = 0;
-    }
-
     queue->head = 0;
     queue->tail = 0;
     queue->size = 0;
+
+    for (int i = 0; i < QUEUE_SIZE; i++) {
+        queue->items[i] = -1;
+    }
 
     return 0;
 }
@@ -41,23 +43,12 @@ int queue_in(queue_t *queue, int item) {
         return -1;
     }
 
-    // Return an error if the queue is full
-    if (queue->size == QUEUE_SIZE) {
+    if (queue_is_full(queue)) {
         return -1;
     }
 
-    // Add the item to the tail of the queue
     queue->items[queue->tail] = item;
-
-    // Move the tail forward
-    queue->tail++;
-
-    // If we are at the end of the array, move the tail to the beginning
-    if (queue->tail == QUEUE_SIZE) {
-        queue->tail = 0;
-    }
-
-    // Increment size (since we just added an item to the queue)
+    queue->tail = (queue->tail + 1) % QUEUE_SIZE;
     queue->size++;
 
     return 0;
@@ -66,6 +57,7 @@ int queue_in(queue_t *queue, int item) {
 /**
  * Pulls an item from the specified queue
  * @param  queue - pointer to the queue
+ * @param  item  - pointer to the memory to save item to
  * @return -1 on error; 0 on success
  */
 int queue_out(queue_t *queue, int *item) {
@@ -73,27 +65,40 @@ int queue_out(queue_t *queue, int *item) {
         return -1;
     }
 
-    // return -1 if queue is empty
-    if (queue->size == 0) {
+    if (queue_is_empty(queue)) {
         return -1;
     }
 
-    // Get the item from the head of the queue
     *item = queue->items[queue->head];
-
-    // Reset the empty item
-    queue->items[queue->head] = 0;
-
-    // Move the head forward
-    queue->head++;
-
-    // If we are at the end of the array, move the head to the beginning
-    if (queue->head == QUEUE_SIZE) {
-        queue->head = 0;
-    }
-
-    // Decrement size (since we just removed an item from the queue)
+    queue->items[queue->head] = -1;
+    queue->head = (queue->head + 1) % QUEUE_SIZE;
     queue->size--;
 
     return 0;
+}
+
+/**
+ * Indicates if the queue is empty
+ * @param queue - pointer to the queue structure
+ * @return true if empty, false if not empty
+ */
+bool queue_is_empty(queue_t *queue) {
+    if (!queue) {
+        return true;
+    }
+
+    return queue->size == 0;
+}
+
+/**
+ * Indicates if the queue is full
+ * @param queue - pointer to the queue structure
+ * @return true if full, false if not full
+ */
+bool queue_is_full(queue_t *queue) {
+    if (!queue) {
+        return true;
+    }
+
+    return queue->size >= QUEUE_SIZE;
 }
