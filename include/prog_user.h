@@ -6,4 +6,6 @@ void prog_shell(void);
 void prog_ping(void);
 void prog_pong(void);
 
+void remote_term(void);
+
 #endif

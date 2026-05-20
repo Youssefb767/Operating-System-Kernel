@@ -79,15 +79,15 @@ int io_flush(int io);
 int mutex_init(void);
 
 /**
- * Detroys a mutex
- * @return -1 on error, 0 on sucecss
+ * Destroys a mutex
+ * @return -1 on error, 0 on success
  */
 int mutex_destroy(int mutex);
 
 /**
  * Locks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  * @note If the mutex is already locked, process will block/wait.
  */
 int mutex_lock(int mutex);
@@ -95,7 +95,7 @@ int mutex_lock(int mutex);
 /**
  * Unlocks the mutex
  * @param mutex - mutex id
- * @return -1 on error, 0 on sucecss
+ * @return -1 on error, 0 on success
  */
 int mutex_unlock(int mutex);
 
@@ -126,5 +126,26 @@ int sem_wait(int sem);
  * @return -1 on error, otherwise the current semaphore count
  */
 int sem_post(int sem);
+
+/**
+ * Allocates a serial port.
+ * @return port number on success, -1 on error
+ */
+int PortAlloc(void);
+
+/**
+ * Writes a null-terminated string to a serial port.
+ * @param p - string to write
+ * @param port_num - serial port number
+ */
+void PortWrite(char *p, int port_num);
+
+/**
+ * Reads a line from a serial port.
+ * Stops on carriage return.
+ * @param p - output buffer
+ * @param port_num - serial port number
+ */
+void PortRead(char *p, int port_num);
 
 #endif

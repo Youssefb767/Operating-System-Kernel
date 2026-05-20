@@ -26,6 +26,13 @@ ENTRY(isr_entry_timer)
     // Enter into the kernel context for processing
     jmp kernel_enter
 
+// Serial Port ISR Entry
+ENTRY(isr_entry_port)
+    // Indicate which interrupt occured
+    pushl $IRQ_PORT
+    // Enter into the kernel context for processing
+    jmp kernel_enter
+
 // System Call ISR Entry
 ENTRY(isr_entry_syscall)
     // Indicate which interrupt occured
@@ -78,4 +85,3 @@ ENTRY(kernel_context_exit)
     // before returning
     add $4, %esp
     iret
-
