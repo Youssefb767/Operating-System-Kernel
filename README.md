@@ -8,23 +8,6 @@ Jahmeen Thomas
 
 ## Feedback History
 
-### [04/23/2026] Phase 4 Feedback
-
-**Strengths**
-- The system compiles successfully.
-- `ksyscall_init()` registers `isr_entry_syscall` and `ksyscall_irq_handler`.
-- `syscall.c` implements `_syscall0()`, `_syscall1()`, `_syscall2()`, and `_syscall3()`.
-- User-facing system call APIs are present for `sys_get_time()`, `sys_get_name()`, `proc_sleep()`, `proc_exit()`, `proc_get_pid()`, `proc_get_name()`, `io_write()`, `io_read()`, and `io_flush()`.
-- `kproc_init()` creates an idle process and four shell processes.
-- `kproc_attach()` exists and is used to attach shell processes to TTYs.
-- `scheduler_sleep()` and sleep-queue wakeup logic are implemented, and the timer callback wakes sleeping processes.
-- The tag is set correctly.
-
-
-**Areas for Improvement**
-- **The system fails to run due to NULL pointer access***. 
-- `tty_get()` returns `NULL` and `tty_input()` is not implemented, so the TTY input/output path is incomplete.
-
 ### [03/30/2026] Phase 3 Feedback
 
 **Strengths**
