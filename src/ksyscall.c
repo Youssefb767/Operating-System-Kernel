@@ -16,6 +16,7 @@
 #include "timer.h"
 #include "ksem.h"
 #include "kmutex.h"
+#include "port.h"
 
 /**
  * System call IRQ handler
@@ -118,6 +119,19 @@ void ksyscall_irq_handler(void) {
 
         case SYSCALL_SEM_WAIT:
             rc = ksyscall_sem_wait((int)arg1);
+            break;
+
+        case SYSCALL_PORTALLOC:
+            rc = PortAllocHandler();
+            break;
+
+        case SYSCALL_PORTWRITE:
+            PortWriteHandler((char)arg1, (int)arg2);
+            rc = 0;
+            break;
+
+        case SYSCALL_PORTREAD:
+            rc = PortReadHandler((int)arg1);
             break;
 
         default:
@@ -231,7 +245,6 @@ int ksyscall_sys_get_name(char *name) {
 
 /**
  * Puts the active process to sleep for the specified number of seconds
- * @param seconds - number of seconds the process should sleep
  */
 int ksyscall_proc_sleep(int seconds) {
     scheduler_sleep(active_proc, seconds * 100);

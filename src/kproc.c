@@ -284,5 +284,11 @@ void kproc_init(void) {
 
         kproc_attach_tty(pid, (TTY_MAX - (pid % 2) - 1));
     }
-}
 
+    for (int i = 0; i < 2; i++) {
+        pid = kproc_create(remote_term, "remote term", PROC_TYPE_USER);
+        kernel_log_debug("Created remote term process %d", pid);
+
+        kproc_attach_tty(pid, 5 + i);
+    }
+}

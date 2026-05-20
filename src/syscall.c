@@ -4,6 +4,8 @@
  *
  * System call APIs
  */
+
+#include "port.h"
 #include "syscall.h"
 
 /**
@@ -241,4 +243,103 @@ int sem_wait(int sem) {
  */
 int sem_post(int sem) {
     return _syscall1(SYSCALL_SEM_POST, sem);
+}
+
+/**
+ * Allocates a serial port.
+ * @return port number on success, -1 on error
+ */
+int PortAlloc(void) {
+    int port_num;
+
+    port_num = _syscall0(SYSCALL_PORTALLOC);
+
+    if (port_num < 0 || port_num >= PORT_NUM) {
+        return -1;
+    }
+
+    port[port_num].write_sid = sem_init(QUEUE_SIZE);
+    port[port_num].read_sid = sem_init(0);
+
+    if (port[port_num].write_sid < 0 || port[port_num].read_sid < 0) {
+        return -1;
+    }
+
+    return port_num;
+}
+
+/**
+ * Writes a null-terminated string to a serial port.
+ * @param p - string to write
+ * @param port_num - serial port number
+ */
+void PortWrite(char *p, int port_num) {
+    if (!p) {
+        return;
+    }
+
+    if (port_num < 0 || port_num >= PORT_NUM) {
+        return;
+    }
+
+    while (*p != '\0') {
+        sem_wait(port[port_num].write_sid);
+        _syscall2(SYSCALL_PORTWRITE, (int)*p, port_num);
+        p++;
+    }
+}
+
+/**
+ * Reads a line from a serial port.
+ * Stops on carriage return or newline.
+ * Skips leading CR/LF characters so leftover line endings do not create empty reads.
+ * @param p - output buffer
+ * @param port_num - serial port number
+ */
+void PortRead(char *p, int port_num) {
+    int ch;
+    int count = 0;
+
+    if (!p) {
+        return;
+    }
+
+    if (port_num < 0 || port_num >= PORT_NUM) {
+        p[0] = '\0';
+        return;
+    }
+
+    while (count < PORT_READ_BUF_SIZE - 1) {
+        sem_wait(port[port_num].read_sid);
+
+        ch = _syscall1(SYSCALL_PORTREAD, port_num);
+
+        if (ch < 0) {
+            continue;
+        }
+
+        if (ch == '\b' || ch == 0x7F) {
+            if (count > 0) {
+                count--;
+                p[count] = '\0';
+
+                PortWrite("\b \b", port_num);
+            }
+
+            continue;
+        }
+
+        if (ch == '\r' || ch == '\n') {
+            if (count == 0) {
+                continue;
+            }
+
+            break;
+        }
+
+        p[count] = (char)ch;
+        count++;
+    }
+
+    p[count] = '\0';
 }

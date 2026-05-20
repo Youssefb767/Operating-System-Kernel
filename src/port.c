@@ -109,11 +109,19 @@ void PortReadOne(int port_num) {
         return;
     }
 
+    if (ch != '\b' && ch != 0x7F) {
     if (!queue_is_full(&port[port_num].loopback_q)) {
         queue_in(&port[port_num].loopback_q, ch);
     } else {
         kernel_log_error("port: loopback queue full on port %d", port_num);
     }
+
+    if (ch == '\r') {
+        if (!queue_is_full(&port[port_num].loopback_q)) {
+            queue_in(&port[port_num].loopback_q, '\n');
+        }
+    }
+}
 
     if (ch == '\r') {
         if (!queue_is_full(&port[port_num].loopback_q)) {

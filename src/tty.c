@@ -45,6 +45,11 @@ int tty_get_active(void) {
     return active_tty->id;
 }
 
+/**
+ * Returns the tty structure for the given tty number
+ * @param tty - TTY number
+ * @return tty pointer
+ */
 struct tty_t *tty_get(int tty) {
     if (tty < 0 || tty >= TTY_MAX) {
         kernel_panic("Invalid TTY %d", tty);
@@ -66,7 +71,7 @@ void tty_refresh(void) {
     struct tty_t *tty = active_tty;
     char c;
 
-    // Handle new I/O
+    // Handle new output
     while (!ringbuf_is_empty(&tty->io_output)) {
         if (ringbuf_read(&tty->io_output, &c) == 0) {
             tty_update(c);
@@ -85,10 +90,15 @@ void tty_refresh(void) {
                 y++;
             }
 
-            vga_putc_at(x++, y, tty->color_bg, tty->color_fg, tty->buf[tty->pos_scroll*TTY_WIDTH + i]);
+            vga_putc_at(
+                x++,
+                y,
+                tty->color_bg,
+                tty->color_fg,
+                tty->buf[tty->pos_scroll * TTY_WIDTH + i]
+            );
         }
 
-        // The screen has been refreshed, so clea the refresh flag
         tty->refresh = 0;
     }
 }
@@ -121,9 +131,7 @@ void tty_update(char c) {
     }
 
     struct tty_t *tty = active_tty;
-
-//    kernel_log_debug("tty[%d]: input char=%c", tty->id, c);
-//    kernel_log_debug("  before scroll=%d, x=%d, y=%d", tty->pos_scroll, tty->pos_x, tty->pos_y);
+    int index;
 
     switch (c) {
         case '\t':
@@ -131,11 +139,18 @@ void tty_update(char c) {
             break;
 
         case '\b':
+        case 127:
             if (tty->pos_x != 0) {
                 tty->pos_x--;
+                index = (tty->pos_scroll * TTY_WIDTH) +
+                        (tty->pos_x + tty->pos_y * TTY_WIDTH);
+                tty->buf[index] = ' ';
             } else if (tty->pos_y != 0) {
                 tty->pos_y--;
                 tty->pos_x = TTY_WIDTH - 1;
+                index = (tty->pos_scroll * TTY_WIDTH) +
+                        (tty->pos_x + tty->pos_y * TTY_WIDTH);
+                tty->buf[index] = ' ';
             }
             break;
 
@@ -149,9 +164,20 @@ void tty_update(char c) {
             break;
 
         default:
-            tty->buf[(tty->pos_scroll * TTY_WIDTH) + (tty->pos_x + tty->pos_y * TTY_WIDTH)] = c;
+            index = (tty->pos_scroll * TTY_WIDTH) +
+                    (tty->pos_x + tty->pos_y * TTY_WIDTH);
+
+            if (index >= 0 && index < TTY_BUF_SIZE) {
+                tty->buf[index] = c;
+            }
+
             tty->pos_x++;
             break;
+    }
+
+    if (tty->pos_x >= TTY_WIDTH) {
+        tty->pos_x = 0;
+        tty->pos_y++;
     }
 
     if (tty->pos_y >= TTY_HEIGHT) {
@@ -165,13 +191,12 @@ void tty_update(char c) {
         }
 
         for (x = 0; x < TTY_WIDTH; x++) {
-            tty->buf[TTY_WIDTH * (y - 1) + x] = ' ';
+            tty->buf[TTY_WIDTH * (TTY_HEIGHT - 1) + x] = ' ';
         }
 
         tty->pos_y = TTY_HEIGHT - 1;
     }
 
-//    kernel_log_debug("  after: scroll=%d, x=%d, y=%d", tty->pos_scroll, tty->pos_x, tty->pos_y);
     tty->refresh = 1;
 }
 
@@ -185,16 +210,21 @@ void tty_init(void) {
     memset(tty_table, 0, sizeof(tty_table));
 
     for (int i = 0; i < TTY_MAX; i++) {
-        tty_table[i].id=i;
+        tty_table[i].id = i;
         tty_table[i].color_bg = VGA_COLOR_BLACK;
         tty_table[i].color_fg = VGA_COLOR_LIGHT_GREY;
         tty_table[i].echo = 0;
+
+        memset(tty_table[i].buf, ' ', sizeof(tty_table[i].buf));
+        tty_table[i].pos_x = 0;
+        tty_table[i].pos_y = 0;
+        tty_table[i].pos_scroll = 0;
+        tty_table[i].refresh = 1;
     }
 
     // Select tty 0 to start with
     tty_select(0);
 
-    // Update the screen on a regular interval (50 times per second right now)
+    // Update the screen on a regular interval
     timer_callback_register(tty_refresh, 2, -1);
 }
-

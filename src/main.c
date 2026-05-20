@@ -6,6 +6,7 @@
  */
 
 #include <spede/stdbool.h>
+
 #include "interrupts.h"
 #include "kernel.h"
 #include "keyboard.h"
@@ -18,9 +19,10 @@
 #include "test.h"
 #include "kmutex.h"
 #include "ksem.h"
+#include "port.h"
 
 int main(void) {
-    // Always iniialize the kernel
+    // Always initialize the kernel
     kernel_init();
 
     // Initialize interrupts
@@ -41,9 +43,6 @@ int main(void) {
     // Initialize the scheduler
     scheduler_init();
 
-    // Initialize processes
-    kproc_init();
-
     // Initialize system calls
     ksyscall_init();
 
@@ -53,17 +52,14 @@ int main(void) {
     // Initialize kernel mutexes
     kmutexes_init();
 
+    // Initialize serial ports
+    port_init();
+
+    // Initialize processes
+    kproc_init();
+
     // Test initialization
     test_init();
-
-    // Print a welcome message
-/*
-    vga_printf("Welcome to %s!\n", OS_NAME);
-    vga_puts("Press a key to continue...\n");
-
-    // Wait for a key to be pressed
-    keyboard_getc();
-*/
 
     // Clear the screen
     vga_clear();
