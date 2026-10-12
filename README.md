@@ -63,6 +63,8 @@ Queues, circular buffers, and ring buffers
 
 Terminal and display I/O
 
+
+
 My Contributions
 
 As part of the three-person development team, I contributed to the implementation and analysis of several kernel subsystems:
@@ -91,7 +93,7 @@ Development and execution environment: Spede-VM
 
 Build tools: Make and GCC
 
-Building and Running
+Building and Running:
 (in the spede-vm terminal)
 cd ~/2026-spring-group-swiftos
 make
