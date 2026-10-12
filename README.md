@@ -9,7 +9,7 @@ A simulated operating-system kernel implemented in C as a three-person team proj
 
 The project focused on core operating-system concepts including process management, CPU scheduling, synchronization, system calls, interrupt handling, terminal I/O, and virtual memory.
 
-Features
+FEATURES:
 
 Process creation and lifecycle management
 
